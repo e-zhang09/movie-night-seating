@@ -1,0 +1,19 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "public-seating-arrangement": {
+      ".read": true,
+      ".indexOn": "i",
+      "$random_id": {
+        ".write": "auth.uid === 'fb-functions' && !(data.child('taken').val() == true)"
+      }
+    },
+    "private-seating-choices": {
+      "$uid": {
+        ".read": "auth.uid === 'fb-functions' || auth.uid === $uid",
+        ".write": "auth.uid === 'fb-functions'"
+      }
+    }
+  }
+}
