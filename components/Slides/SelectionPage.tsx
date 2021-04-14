@@ -313,10 +313,10 @@ const useStyles = makeStyles<Theme, StyleProps>(theme => ({
         width: '100%'
     },
     sizingContainer: {
-        alignItems: 'center',
+        alignItems: 'flex-start',
         display: 'flex',
         justifyContent: 'center',
-        height: 'calc(100vh - 160px)'
+        height: 'calc(100vh - 100px)'
         // overflowY: 'auto'
     },
     placeholderSizingContainer: {
