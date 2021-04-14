@@ -3,6 +3,8 @@ import { createContext, useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import LandingPage from '../components/Slides/LandingPage'
 import ConfirmationPage from '../components/Slides/ConfirmationPage'
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
 const DynamicSelectionPage = dynamic(() => import('../components/Slides/SelectionPage'), {
     loading: ({ error, isLoading, pastDelay }) => <div style={{
@@ -22,9 +24,10 @@ const DynamicSelectionPage = dynamic(() => import('../components/Slides/Selectio
 })
 
 export interface User {
-    displayName: string,
+    displayName?: string,
     email: string,
     idToken: string
+    given_name?: string
 }
 
 export const AppContext = createContext({
@@ -33,7 +36,9 @@ export const AppContext = createContext({
 })
 
 const index = () => {
-    const [slideNumber, setSlideNumber] = useState(1)
+    const debugSkipToSlide = process.env.NODE_ENV !== 'development' ? 1 : 2
+
+    const [slideNumber, setSlideNumber] = useState(debugSkipToSlide)
     const [user, setUser] = useState<null | User>(null)
     const [selected, setSelected] = useState<null | number>(null)
 
@@ -47,6 +52,7 @@ const index = () => {
         user,
         selected
     }}>
+        <ToastContainer/>
         <Slide
             key={'slide-1'}
             direction={'right'}

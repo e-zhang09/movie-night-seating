@@ -4,12 +4,14 @@ import { ServerStyleSheets } from '@material-ui/core/styles'
 
 export default class MyDocument extends Document {
     render() {
+
         return (
             <Html lang='en'>
                 <Head/>
                 <body style={{
                     margin: 0,
-                    padding: 0
+                    padding: 0,
+                    overflow: 'hidden'
                 }}>
                     <Main />
                     <NextScript />

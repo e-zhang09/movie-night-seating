@@ -2,9 +2,11 @@ import { makeStyles } from '@material-ui/core/styles'
 import Layout from '../Layout'
 import firebase from 'firebase'
 import { useContext, useEffect, useState } from 'react'
-import { FIREBASE_CONFIG } from '../../utils/constants'
+import { FIREBASE_CONFIG, GOOGLE_OAUTH_CLIENT_ID } from '../../utils/constants'
 import { Button } from '@material-ui/core'
 import { AppContext, User } from '../../pages'
+import { useRouter } from 'next/router'
+import createNonce from '../../utils/createNonce'
 
 
 interface Props {
@@ -17,27 +19,44 @@ const useStyles = makeStyles(theme => ({}))
 const LandingPage = ({ setSlideNumber, setUser }: Props) => {
     const classes = useStyles()
     const { user } = useContext(AppContext)
+    const router = useRouter()
 
     function onAuthStateChange (callback: (user: null | User) => void) {
-        return firebase.auth().onAuthStateChanged(async user => {
-            if (user) {
+        return firebase.auth().onAuthStateChanged(async _user => {
+            if (_user) {
                 callback({
-                    displayName: user.displayName || '',
-                    email: user.email || '',
-                    idToken: await user.getIdToken()
+                    displayName: _user.displayName || '',
+                    email: _user.email || '',
+                    idToken: await _user.getIdToken()
                 })
-            } else {
-                callback(null)
             }
         })
     }
 
     function login () {
-        const googleAuthProvider = new firebase.auth.GoogleAuthProvider()
-        googleAuthProvider.setCustomParameters({
-            'hd': '@student.fuhsd.org'
-        });
-        firebase.auth().signInWithRedirect(googleAuthProvider)
+        // const googleAuthProvider = new firebase.auth.GoogleAuthProvider()
+        // googleAuthProvider.setCustomParameters({
+        //     'hd': '@student.fuhsd.org'
+        // });
+        // firebase.auth().signInWithRedirect(googleAuthProvider)
+        const baseDomain =
+            process.env.NODE_ENV === 'development'
+                ? 'http%3A%2F%2Flocalhost%3A3001'
+                : 'https%3A%2F%2Fmovie-seating.lynbrookasb.com'
+
+        // TODO: change this url when using whatever
+
+        let redirectURIBuilder = [
+            'https://accounts.google.com/o/oauth2/v2/auth?',
+            `redirect_uri=${baseDomain}%2F&`,
+            'response_type=id_token&',
+            'scope=openid%20email%20profile&',
+            `nonce=${createNonce()}&`,
+            `client_id=${GOOGLE_OAUTH_CLIENT_ID}`
+        ]
+        router.push(redirectURIBuilder.join('')).then((r) => {
+            // ignore
+        })
     }
 
     function logout () {
@@ -50,11 +69,33 @@ const LandingPage = ({ setSlideNumber, setUser }: Props) => {
         } else {
             firebase.app() // if already initialized, use that one
         }
+        const search = new URLSearchParams(window.location.hash.replace('#', '?'))
+        window.history.replaceState(null, '', ' ')
+
+        const id_token = search.get('id_token')
+
+        if (!id_token || id_token.toString().length < 8) {
+            return
+        } else {
+            console.debug(`got id_token: ${id_token}`, parseJwt(id_token))
+            setUser({ ...parseJwt(id_token), idToken: id_token })
+        }
+
         const unsubscribe = onAuthStateChange(setUser)
         return () => {
             unsubscribe()
         }
     }, [])
+
+    function parseJwt (token: string) {
+        const base64Url = token.split('.')[1]
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/')
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        }).join(''))
+
+        return JSON.parse(jsonPayload)
+    }
 
     useEffect(() => {
         console.debug('user', user)
@@ -63,7 +104,7 @@ const LandingPage = ({ setSlideNumber, setUser }: Props) => {
     return <Layout title={'Movie Night | Welcome'}>
         {user?.email.includes('@student.fuhsd.org')
             ? <>
-                <h1>Hi {user.displayName}!</h1>
+                <h1>Hi {user.displayName || user.given_name || 'there'}!</h1>
                 <Button variant="contained" onClick={() => {
                     logout()
                 }}>Logout

@@ -1,12 +1,16 @@
 import Layout from '../Layout'
 import PolygonPoints, { Point } from '../PolygonPoints'
 import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch'
-import { useRef, useState, createContext, useContext } from 'react'
+import { useRef, useState, createContext, useContext, useMemo, useEffect, useCallback } from 'react'
 import SeatsList from '../SeatsList'
-import { makeStyles } from '@material-ui/core/styles'
+import { makeStyles, Theme } from '@material-ui/core/styles'
 import { Box, Button, Slide } from '@material-ui/core'
 import { FirebaseDatabaseNode } from "@react-firebase/database"
 import { AppContext } from '../../pages'
+import generateInitPoints from '../../utils/generateInitPoints'
+import ZoomInIcon from '@material-ui/icons/ZoomIn'
+import ZoomOutIcon from '@material-ui/icons/ZoomOut'
+import PositionFixedKeepSpace from '../PositionFixedKeepSpace'
 
 // coordinate system: 0,0 top left
 
@@ -47,41 +51,186 @@ import { AppContext } from '../../pages'
  */
 const QuadOutline = [
     {
-        x: 0,
+        x: 40,
         y: 0
     },
     {
-        x: 540,
+        x: 540 + 40,
         y: 0
     },
     {
-        x: 472,
+        x: 472 + 40,
         y: 665
     },
     {
-        x: 68,
+        x: 68 + 40,
         y: 665
     }
 ] as Point[]
 
-const backgroundColor = 'rgb(200,200,200)'
+const SecondQuadOutline = [
+    {
+        x: 0,
+        y: 821
+    },
+    {
+        x: 620,
+        y: 821
+    },
+    {
+        x: (620 - 488) / 2 + 488,
+        y: 306 + 821
+    },
+    {
+        x: (620 - 488) / 2,
+        y: 306 + 821
+    }
+] as Point[]
+
+const SeatMasks = [
+    [ // top left corner
+        {
+            x: 40,
+            y: 0
+        },
+        {
+            x: 78 + 40,
+            y: 0
+        },
+        {
+            x: 12.8 + 40,
+            y: 123
+        }
+    ],
+    [ // top right corner
+        {
+            x: 540 + 40,
+            y: 0
+        },
+        {
+            x: 540 + 40 - 78,
+            y: 0
+        },
+        {
+            x: 540 + 40 - 12.8,
+            y: 123
+        }
+    ],
+    [ // path to projector
+        {
+            x: 260,
+            y: 250 + 25
+        },
+        {
+            x: 260 + 25,
+            y: 250
+        },
+        {
+            x: 260 + 75,
+            y: 250
+        },
+        {
+            x: 260 + 100,
+            y: 250 + 25
+        },
+        {
+            x: 260 + 100,
+            y: 250 + 415
+        },
+        {
+            x: 260,
+            y: 250 + 415
+        }
+    ],
+    [
+        {
+            x: 66.8,
+            y: 821 + 200
+        },
+        {
+            x: 66.8 + 487,
+            y: 821 + 200
+        },
+        {
+            x: 66.8 + 487,
+            y: 821 + 219 + 87
+        },
+        {
+            x: 66.8,
+            y: 821 + 219 + 87
+        }
+    ]
+]
+
+const SpecialSpots = [
+    {
+        x: 260 + 50,
+        y: 250 + 42,
+        r: 28,
+        color: 'rgb(46,111,214)',
+        text: 'projector'
+    }
+]
+
+// export const quadBackgroundColor = 'rgb(200,200,200)'
+export const quadBackgroundColor = '#cee4b8'
 
 const padding = {
-    left: 15,
-    top: 15
+    left: 18,
+    top: 25
 }
 
-const hardCodedSVGSize = {
-    width: 540 + 2 * padding.left,
-    height: 665 + 2 * padding.top
+const svgSize = {
+    width: Math.max(...[QuadOutline, SecondQuadOutline].map(bound => Math.max(...bound.map(pt => pt.x)))) + padding.left * 2,
+    height: Math.max(...[QuadOutline, SecondQuadOutline].map(bound => Math.max(...bound.map(pt => pt.y)))) + padding.top * 2
 }
 
-const svgRatio = hardCodedSVGSize.height / hardCodedSVGSize.width
+const svgRatio = svgSize.height / svgSize.width
 
-const useStyles = makeStyles(theme => ({
+interface StyleProps {
+    containerWidth: number
+}
+
+const useStyles = makeStyles<Theme, StyleProps>(theme => ({
     tools: {
         display: 'flex',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        alignItems: 'flex-end',
+        position: 'fixed',
+        right: '5vw',
+        flexDirection: 'column-reverse',
+        bottom: 20,
+        '& > div': {
+            marginBottom: 10
+        },
+        '& > div > *:nth-child(n + 2)': {
+            marginLeft: 10
+        },
+        [theme.breakpoints.up('md')]: {
+            flexDirection: 'column',
+            top: 100,
+            bottom: 'unset'
+        },
+        [theme.breakpoints.down('md')]: {
+            '& > div:first-child': {
+                display: 'none'
+            },
+            right: '2vw',
+            bottom: 80,
+            '& > div': {
+                display: 'flex',
+                flexDirection: 'column-reverse'
+            },
+            '& > div > *:nth-child(n + 2)': {
+                marginLeft: 'unset',
+                marginBottom: 10
+            }
+        }
+    },
+    locationHeadings: {
+        textAlign: 'center',
+        fontWeight: 700,
+        fontSize: 20
     },
     stickToTop: {
         position: 'fixed',
@@ -89,6 +238,7 @@ const useStyles = makeStyles(theme => ({
         left: 0,
         right: 0,
         width: '100%',
+        zIndex: 9,
         background: 'rgb(250,250,250)',
         fontSize: 18,
         fontWeight: 900
@@ -100,17 +250,19 @@ const useStyles = makeStyles(theme => ({
         padding: '20px 15px',
         [theme.breakpoints.up('md')]: {
             padding: '20px 50px',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            '& > div': {
+                textAlign: 'center'
+            }
         },
         '& > *': {
-            marginLeft: 20
+            marginLeft: 12
         },
         '& > *:first-child': {
             marginLeft: 0
         },
         '& > div': {
-            flex: 1,
-            maxWidth: 200
+            flex: 1
         }
     },
     pickersContainer: {
@@ -119,28 +271,29 @@ const useStyles = makeStyles(theme => ({
             flexDirection: 'column',
             justifyContent: 'center',
             position: 'relative',
-            paddingBottom: `${svgRatio * 100}%`
+            height: 'calc(100vh - 238px)'
+            // paddingBottom: `calc(${svgRatio * 100}% - ${svgRatio * 40}px)`
         },
         [theme.breakpoints.up('md')]: {
             display: 'flex',
             flexDirection: 'row',
             justifyContent: 'center'
         },
-        '& svg > polygon': {
-            fill: backgroundColor
-        },
         '& > .selection-list-container': {
-            background: backgroundColor
+            background: quadBackgroundColor
         }
     },
     listPicker: {
-        [theme.breakpoints.up('md')]: {
-            marginLeft: 110
-        },
+        background: 'repeating-linear-gradient(28deg, rgb(250,250,250), rgb(250,250,250) 10px, rgb(245,245,245) 10px, rgb(245,245,245) 20px)',
         [theme.breakpoints.down('md')]: {
             position: 'absolute',
-            transformOrigin: 'top left',
-            transform: `scale(${typeof window !== 'undefined' ? ((window?.innerWidth || hardCodedSVGSize.width) / hardCodedSVGSize.width) : 1})`,
+            maxHeight: 'calc(100vh - 238px)',
+            '& > div': {
+                maxHeight: 'calc(100vh - 238px)',
+                width: '100vw'
+            },
+            // transformOrigin: 'top left',
+            // transform: `scale(${typeof window !== 'undefined' ? (((window?.innerWidth || svgSize.width) - 40) / svgSize.width) : 1})`,
             //translate(-${(1-correctRatio) * 100}%, -${(1-correctRatio) * 100}%) didnt work
             top: 0
         }
@@ -148,19 +301,23 @@ const useStyles = makeStyles(theme => ({
     pickerOverallContainer: {
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: 'center'
+        justifyContent: 'center',
+        [theme.breakpoints.up('md')]: {
+            padding: '20px 0 90px 0',
+            width: 'unset'
+        }
     },
     scrollContainer: {
-        maxHeight: 'calc(100vh - 80px)',
+        maxHeight: 'calc(100vh - 100px)',
         overflowY: 'auto',
         width: '100%'
     },
     sizingContainer: {
-        marginTop: 80,
         alignItems: 'center',
         display: 'flex',
         justifyContent: 'center',
-        height: 'calc(100vh - 80px)'
+        height: 'calc(100vh - 160px)'
+        // overflowY: 'auto'
     },
     placeholderSizingContainer: {
         position: 'absolute',
@@ -190,19 +347,25 @@ const SelectionPage = ({ setSlideNumber, setSelected }: Props) => {
     const [highlight, setHighlight] = useState(0)
     const [scrollToHighlight, setScrollToHighlight] = useState(0)
 
-    // const seats = useMemo(() => generateInitPoints(QuadOutline, radius).map((pt, i) => ({
+    // const radius = 40 // 4ft
+
+    // const seats = useMemo(() => generateInitPoints([QuadOutline, SecondQuadOutline], radius, SeatMasks).map((pt, i) => ({
     //     ...pt,
     //     i: i + 1,
     //     // taken: i % 2 === 0,
     //     taken: Math.random() > 0.8
     // })), [])
 
-    const classes = useStyles()
+    // console.debug(seats)
+
+    const classes = useStyles({
+        containerWidth: 1
+    })
     const { selected } = useContext(AppContext)
 
     return (
         <Layout title="Movie Night | Choose Your Seat">
-            <div className={classes.stickToTop}>
+            <PositionFixedKeepSpace className={classes.stickToTop}>
                 <Slide
                     key={typeof selected === 'number' ? `selected` : `-1`}
                     direction={'right'}
@@ -215,11 +378,11 @@ const SelectionPage = ({ setSlideNumber, setSelected }: Props) => {
                     }
                 >
                     <div className={classes.topBarHorizontalContainer}>
-                        <Button variant="contained" onClick={() => {
+                        <Button variant="contained" size={'small'} onClick={() => {
                             setSlideNumber(1)
                         }}>Back</Button>
                         <div>Selected seat #{selected}!</div>
-                        <Button variant="contained" onClick={() => {
+                        <Button variant="contained" size={'small'} onClick={() => {
                             setSlideNumber(3)
                         }}>Next</Button>
                     </div>
@@ -235,24 +398,25 @@ const SelectionPage = ({ setSlideNumber, setSelected }: Props) => {
                         node.addEventListener('transitionend', done, false)
                     }
                 >
-                    <div className={classes.topBarHorizontalContainer}>
-                        <Button variant="contained" onClick={() => {
+                    <Box className={classes.topBarHorizontalContainer} boxShadow={4}>
+                        <Button variant="contained" size={'small'} onClick={() => {
                             setSlideNumber(1)
                         }}>Back</Button>
-                        <div>Click on the image to select a seat!</div>
-                    </div>
+                        <div>Select a seat on the image!</div>
+                        <Button variant="contained" size={'small'} disabled>Next</Button>
+                    </Box>
                 </Slide>
-            </div>
+            </PositionFixedKeepSpace>
             <div className={classes.sizingContainer}>
                 <div className={classes.scrollContainer}>
                     <div className={classes.pickerOverallContainer}>
                         <TransformWrapper
-                            defaultScale={typeof window !== 'undefined' && window.innerWidth < 600 ? 0.9 : 1}
+                            defaultScale={typeof window !== 'undefined' && window.innerWidth < 600 ? 0.37 : 1}
                             defaultPositionX={0}
                             defaultPositionY={0}
                             options={{
-                                minScale: typeof window !== 'undefined' && window.innerWidth < 600 ? 0.8 : 1,
-                                maxScale: 3
+                                minScale: typeof window !== 'undefined' && window.innerWidth < 600 ? 0.37 : 1,
+                                maxScale: 2.5
                             }}
                             wheel={{
                                 step: 2
@@ -268,8 +432,8 @@ const SelectionPage = ({ setSlideNumber, setSelected }: Props) => {
                             {({ zoomIn, zoomOut, resetTransform, ...rest }) => (
                                 <>
                                     <div style={{
-                                        textAlign: 'center'
-                                    }}>
+                                        marginBottom: 10
+                                    }} className={classes.locationHeadings}>
                                         —— Screen ——
                                     </div>
                                     <div className={classes.pickersContainer}>
@@ -295,8 +459,9 @@ const SelectionPage = ({ setSlideNumber, setSelected }: Props) => {
                                                         <div className={classes.listPicker}>
                                                             <TransformComponent>
                                                                 <PolygonPoints
+                                                                    specialSpots={SpecialSpots}
+                                                                    seatMasks={SeatMasks}
                                                                     padding={padding}
-                                                                    fitInTo={QuadOutline}
                                                                     onHover={pt => {
                                                                         // console.debug(pt, pt.taken, pt.i)
                                                                         if (highlight !== pt.i && !pt.taken) {
@@ -309,11 +474,13 @@ const SelectionPage = ({ setSlideNumber, setSelected }: Props) => {
                                                                             setSelected(pt.i)
                                                                         }
                                                                     }}
+                                                                    bounds={[QuadOutline, SecondQuadOutline]}
                                                                     seats={seats}
                                                                 />
                                                             </TransformComponent>
                                                         </div>
                                                         <SeatsList
+                                                            svgSize={svgSize}
                                                             seats={seats}
                                                             padding={padding}
                                                             onHover={pt => {
@@ -333,17 +500,27 @@ const SelectionPage = ({ setSlideNumber, setSelected }: Props) => {
                                         </UIContext.Provider>
                                     </div>
                                     <div style={{
-                                        textAlign: 'center'
-                                    }}>
+                                        marginTop: 10
+                                    }} className={classes.locationHeadings}>
                                         —— Office ——
                                     </div>
-                                    <div className={classes.tools} style={{ marginBottom: 80, marginTop: 10 }}>
-                                        <button onClick={zoomIn}>+</button>
-                                        <button onClick={zoomOut}>-</button>
-                                        <button onClick={() => setUseCircle(prev => prev > 0 ? 0 : 3)}>Toggle safety
-                                            radius
-                                            (3ft)
-                                        </button>
+                                    <div className={classes.tools}>
+                                        <div>
+                                            <Button variant="contained" color="default"
+                                                onClick={() => setUseCircle(prev => prev > 0 ? 0 : 3)}>
+                                                Toggle safety radius (3ft)
+                                            </Button>
+                                        </div>
+                                        <div>
+                                            <Button variant="contained" color="default"
+                                                onClick={zoomOut}>
+                                                <ZoomOutIcon/>
+                                            </Button>
+                                            <Button variant="contained" color="default"
+                                                onClick={zoomIn}>
+                                                <ZoomInIcon/>
+                                            </Button>
+                                        </div>
                                     </div>
                                 </>
                             )}

@@ -1,7 +1,8 @@
 import { makeStyles } from '@material-ui/core/styles'
 import clsx from 'clsx'
+import { Fragment } from 'react'
 import { useContext } from 'react'
-import { UIContext } from './Slides/SelectionPage'
+import { quadBackgroundColor, UIContext } from './Slides/SelectionPage'
 
 export interface Point {
     x: number
@@ -9,14 +10,16 @@ export interface Point {
 }
 
 interface Props {
-    fitInTo: Point[]
+    bounds: Point[][]
     onHover: (pt: (Point & { i: number, taken?: boolean })) => void
     onClick: (pt: (Point & { i: number, taken?: boolean })) => void
     seats: (Point & { i: number, taken?: boolean })[]
     padding: {
         left: number
         top: number
-    }
+    },
+    seatMasks: Point[][],
+    specialSpots: (Point & { text: string, r: number, color: string })[]
 }
 
 
@@ -43,56 +46,141 @@ const useStyles = makeStyles(theme => ({
         },
         '&.taken > rect, &.taken > circle': {
             opacity: 0.2
+        },
+        '& > text': {
+            textAnchor: 'middle',
+            alignmentBaseline: 'middle',
+            fill: 'white'
+        },
+        '& > line': {
+            stroke: 'rgb(50,50,50)',
+            strokeWidth: 2
         }
     },
-    screenIndicator: {}
+    screenIndicator: {},
+    quadPolygon: {
+        fill: quadBackgroundColor,
+        stroke: 'black',
+        strokeWidth: 1
+    },
+    maskPolygon: {
+        fill: 'url(#diagonalHatch)',
+        stroke: 'black',
+        strokeWidth: 1
+    },
+    maskPolygonFill: {
+        fill: 'rgb(208,198,198)'
+    }
 }))
 
 const PolygonPoints = ({
-                           fitInTo,
+                           bounds,
                            onHover,
                            seats,
                            padding,
-                           onClick
+                           onClick,
+                           seatMasks,
+                           specialSpots
                        }: Props) => {
 
     const classes = useStyles()
     const { useCircle, selected, highlight } = useContext(UIContext)
 
+    const svgHeight = Math.max(...bounds.map(bound => Math.max(...bound.map(pt => pt.y)))) + padding.top * 2
+    const svgWidth = Math.max(...bounds.map(bound => Math.max(...bound.map(pt => pt.x)))) + padding.left * 2
+
     return <>
-        <svg height={Math.max(...fitInTo.map(pt => pt.y)) + padding.top * 2}
-            width={Math.max(...fitInTo.map(pt => pt.x)) + padding.left * 2}
+        <svg height={svgHeight}
+            width={svgWidth}
             onMouseOut={() => {
                 onHover({ x: 0, y: 0, i: -1 })
             }}
         >
-            <polygon points={
-                fitInTo.map(pt => `${pt.x + padding.left},${pt.y + padding.top}`).join(' ')
-            } style={{
-                stroke: 'black',
-                strokeWidth: 1
-            }}/>
-            {seats.map(seat =>
-                <g key={seat.i} onMouseOver={() => onHover(seat)} onClick={() => onClick(seat)}
-                    className={clsx(classes.seatGroup, (highlight === seat.i && 'highlighted'), seat.taken && 'taken', (selected === seat.i && 'selected'))}>
-                    {useCircle > 0
-                        ? <circle
-                            cx={seat.x + padding.left}
-                            cy={seat.y + padding.top}
-                            r={useCircle * 10}/>
-                        : <rect width={rectSize.width} height={rectSize.height}
-                            x={seat.x - rectSize.width / 2 + padding.left}
-                            y={seat.y - rectSize.height / 2 + padding.top}/>}
-                    <text
-                        x={seat.x + padding.left}
-                        y={seat.y + 1 + padding.top}
+            <defs>
+                <pattern id="diagonalHatch" width="10" height="10" patternTransform="rotate(45 0 0)"
+                    patternUnits="userSpaceOnUse">
+                    <line x1="0" y1="0" x2="0" y2="10"
                         style={{
-                            textAnchor: 'middle',
-                            alignmentBaseline: 'middle',
-                            fill: 'white'
-                        }}>{seat.i}</text>
-                </g>
-            )}
+                            stroke: 'black',
+                            strokeWidth: 1
+                        }}/>
+                </pattern>
+            </defs>
+            <g>
+                {bounds.map((bound, i) =>
+                    <polygon
+                        key={`bound-${i}`}
+                        points={
+                            bound.map(pt => `${pt.x + padding.left},${pt.y + padding.top}`).join(' ')
+                        }
+                        className={classes.quadPolygon}
+                    />
+                )}
+            </g>
+            <g>
+                {seatMasks.map((mask, i) =>
+                    <Fragment key={`mask-${i}`}>
+                        <polygon
+                            points={
+                                mask.map(pt => `${pt.x + padding.left},${pt.y + padding.top}`).join(' ')
+                            }
+                            className={classes.maskPolygonFill}
+                        />
+                        <polygon
+                            points={
+                                mask.map(pt => `${pt.x + padding.left},${pt.y + padding.top}`).join(' ')
+                            }
+                            className={classes.maskPolygon}
+                        />
+                    </Fragment>
+                )}
+            </g>
+            <g>
+                {specialSpots.map((spot, i) =>
+                    <Fragment key={`spot-${spot.text}`}>
+                        <circle
+                            r={spot.r}
+                            cx={spot.x + padding.left}
+                            cy={spot.y + padding.top}
+                            style={{
+                                fill: spot.color
+                            }}
+                        />
+                        <text
+                            x={spot.x + padding.left}
+                            y={spot.y + padding.top}
+                            style={{
+                                textAnchor: 'middle',
+                                alignmentBaseline: 'middle',
+                                fill: 'white',
+                                fontSize: '75%'
+                            }}
+                        >{spot.text}</text>
+                    </Fragment>
+                )}
+            </g>
+            <g>
+                {seats.map(seat =>
+                    <g key={seat.i} onMouseOver={() => onHover(seat)} onClick={() => onClick(seat)}
+                        className={clsx(classes.seatGroup, (highlight === seat.i && 'highlighted'), seat.taken && 'taken', (selected === seat.i && 'selected'))}>
+                        {useCircle > 0
+                            ? <circle
+                                cx={seat.x + padding.left}
+                                cy={seat.y + padding.top}
+                                r={useCircle * 10}/>
+                            : <rect width={rectSize.width} height={rectSize.height}
+                                x={seat.x - rectSize.width / 2 + padding.left}
+                                y={seat.y - rectSize.height / 2 + padding.top}/>}
+                        <text
+                            x={seat.x + padding.left}
+                            y={seat.y + 1 + padding.top}
+                        >{seat.i}</text>
+                        {seat.taken &&
+                        <line x1={seat.x - 10 + padding.left} x2={seat.x + 10 + padding.left} y1={seat.y + padding.top}
+                            y2={seat.y + padding.top}/>}
+                    </g>
+                )}
+            </g>
         </svg>
     </>
 }

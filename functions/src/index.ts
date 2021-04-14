@@ -1,6 +1,6 @@
 import * as functions from "firebase-functions"
 import * as admin from "firebase-admin"
-// import generateInitialPoints from "../utils/generateInitPoints"
+// import generateInitialPoints, { Point } from "../utils/generateInitPoints"
 import cors from "cors"
 
 const whitelist = ["http://localhost:3001", "https://movie-seating.lynbrookasb.com"]
@@ -40,13 +40,129 @@ const privateRef = db.ref("private-seating-choices")
 const auth = admin.auth()
 
 // const DEV_USE_FLAG = false
-
+//
 // exports.fooooo = functions.https.onRequest(async (request, response) => {
 //     if (!DEV_USE_FLAG) {
 //         response.status(404).send()
 //         return
 //     }
-//     const seats = generateInitialPoints().map((pt, i) => ({
+//
+//     const QuadOutline = [
+//         {
+//             x: 40,
+//             y: 0
+//         },
+//         {
+//             x: 540 + 40,
+//             y: 0
+//         },
+//         {
+//             x: 472 + 40,
+//             y: 665
+//         },
+//         {
+//             x: 68 + 40,
+//             y: 665
+//         }
+//     ] as Point[]
+//
+//     const SecondQuadOutline = [
+//         {
+//             x: 0,
+//             y: 821
+//         },
+//         {
+//             x: 620,
+//             y: 821
+//         },
+//         {
+//             x: (620 - 488) / 2 + 488,
+//             y: 306 + 821
+//         },
+//         {
+//             x: (620 - 488) / 2,
+//             y: 306 + 821
+//         }
+//     ] as Point[]
+//
+//     const SeatMasks = [
+//         [ // top left corner
+//             {
+//                 x: 40,
+//                 y: 0
+//             },
+//             {
+//                 x: 78 + 40,
+//                 y: 0
+//             },
+//             {
+//                 x: 12.8 + 40,
+//                 y: 123
+//             }
+//         ],
+//         [ // top right corner
+//             {
+//                 x: 540 + 40,
+//                 y: 0
+//             },
+//             {
+//                 x: 540 + 40 - 78,
+//                 y: 0
+//             },
+//             {
+//                 x: 540 + 40 - 12.8,
+//                 y: 123
+//             }
+//         ],
+//         [ // path to projector
+//             {
+//                 x: 260,
+//                 y: 250 + 25
+//             },
+//             {
+//                 x: 260 + 25,
+//                 y: 250
+//             },
+//             {
+//                 x: 260 + 75,
+//                 y: 250
+//             },
+//             {
+//                 x: 260 + 100,
+//                 y: 250 + 25
+//             },
+//             {
+//                 x: 260 + 100,
+//                 y: 250 + 415
+//             },
+//             {
+//                 x: 260,
+//                 y: 250 + 415
+//             }
+//         ],
+//         [
+//             {
+//                 x: 66.8,
+//                 y: 821 + 200
+//             },
+//             {
+//                 x: 66.8 + 487,
+//                 y: 821 + 200
+//             },
+//             {
+//                 x: 66.8 + 487,
+//                 y: 821 + 219 + 87
+//             },
+//             {
+//                 x: 66.8,
+//                 y: 821 + 219 + 87
+//             }
+//         ]
+//     ]
+//
+//     const radius = 40 // 4ft
+//
+//     const seats = generateInitialPoints([QuadOutline, SecondQuadOutline], radius, SeatMasks).map((pt, i) => ({
 //         ...pt,
 //         i: i + 1
 //     }))
@@ -121,9 +237,21 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
             return
         }
 
+        let _errored = false as boolean | string
+
         await publicRef.child(key).update({
             taken: true
+        }).catch(_err => {
+            _errored = 'seat_already_taken'
         })
+
+        if(_errored){
+            res.json({
+                status: "errored",
+                reason: _errored
+            })
+            return
+        }
 
         console.debug('pass update')
 
