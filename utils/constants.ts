@@ -13,3 +13,5 @@ export const BASE_SUBMISSION_URL = 'https://us-central1-movie-night-seating.clou
 export const DEV_SUBMISSION_URL = 'http://localhost:5001/movie-night-seating/us-central1/submitSeatChoice'
 
 export const GOOGLE_OAUTH_CLIENT_ID = '639715866105-9k4lfi1qmqohj9lijlbd1mlupfsob0iv.apps.googleusercontent.com'
+
+export const CONTACT_EMAIL = 'asbsocial1@gmail.com'

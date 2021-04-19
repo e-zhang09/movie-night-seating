@@ -391,6 +391,7 @@ const SelectionPage = ({
 
         if (result?.status !== 'successful' || errored) {
             console.debug('result', result)
+            setOpenModal(false)
             if (result?.reason === 'seat_already_taken') {
                 toast.error('Oops! That seat has already been taken by someone else. Please select a new seat to continue!')
             } else if (result?.reason === 'already_registered') {
@@ -400,7 +401,6 @@ const SelectionPage = ({
             } else {
                 toast.error(`Error: ${result?.reason}, please try again later!`)
             }
-            setOpenModal(false)
         } else {
             if (selected) {
                 toast.success(`Success! You've signed up for seat #${selected.i}`)

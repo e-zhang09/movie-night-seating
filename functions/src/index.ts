@@ -1,22 +1,6 @@
 import * as functions from "firebase-functions"
 import * as admin from "firebase-admin"
-// import generateInitialPoints, { Point } from "../utils/generateInitPoints"
 import cors from "cors"
-
-const whitelist = ["http://localhost:3001", "https://movie-seating.lynbrookasb.com"]
-const corsOptions = {
-    origin: function (origin: string, callback: (arg0: any) => void) {
-        if (whitelist.indexOf(origin) !== -1) {
-            // @ts-ignore
-            callback(null, true)
-        } else {
-            callback(new Error("Not allowed by CORS"))
-        }
-    }
-}
-
-// @ts-ignore
-const corsMiddleware = cors(corsOptions)
 
 // // Start writing Firebase Functions
 // // https://firebase.google.com/docs/functions/typescript
@@ -177,6 +161,26 @@ const auth = admin.auth()
 // })
 
 exports.submitSeatChoice = functions.https.onRequest((req, res) => {
+
+    console.debug('huh???????????????????????????????????????????????????????')
+
+    const whitelist = ["http://localhost:3001", "https://movie-seating.lynbrookasb.com"]
+    const corsOptions = {
+        origin: function (origin: string, callback: (arg0: any) => void) {
+            console.debug('whiteList', whitelist)
+            console.debug('checking against origin', origin)
+            if (whitelist.indexOf(origin) !== -1) {
+                // @ts-ignore
+                callback(null, true)
+            } else {
+                callback(new Error("Not allowed by CORS"))
+            }
+        }
+    }
+
+    // @ts-ignore
+    const corsMiddleware = cors(corsOptions)
+
     async function submissionHandler () {
         const { idToken, selected } = req.body
         if (!idToken) {
@@ -206,7 +210,7 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
         }
         const { name, email, uid, picture } = user
         if (!name || !email || !uid) {
-            console.debug('no user (email or uid or name)', name, email, uid, picture?.substr(0,5))
+            console.debug('no user (email or uid or name)', name, email, uid, picture?.substr(0, 5))
             res.json({
                 status: "errored",
                 reason: "bad_id_token"

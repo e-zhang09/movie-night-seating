@@ -3,7 +3,7 @@ import Layout from '../Layout'
 import firebase from 'firebase/app'
 import 'firebase/database'
 import { ReactNode, useContext, useEffect, useState } from 'react'
-import { FIREBASE_CONFIG } from '../../utils/constants'
+import { CONTACT_EMAIL, FIREBASE_CONFIG } from '../../utils/constants'
 import { Box, Button, Typography, Fade, Checkbox, Tooltip } from '@material-ui/core'
 import { AppContext, User } from '../../pages'
 import { useRouter } from 'next/router'
@@ -156,6 +156,7 @@ const LandingPage = ({ setSlideNumber, setUser, setLandingSlide }: Props) => {
         return JSON.parse(jsonPayload)
     }
 
+    const flatUser = JSON.stringify(user)
     useEffect(() => {
         console.debug('user', user)
         if (user && landingSlide === 0) {
@@ -167,7 +168,7 @@ const LandingPage = ({ setSlideNumber, setUser, setLandingSlide }: Props) => {
         } else if (!user) {
             setLandingSlide(0)
         }
-    }, [user])
+    }, [flatUser])
 
     return <Layout title={'Movie Night | Welcome'}>
         <StickToTop>
@@ -261,7 +262,7 @@ const LandingPage = ({ setSlideNumber, setUser, setLandingSlide }: Props) => {
                 </ListItem>
                 <ListItem>
                     Any questions or concerns? Feel free to email us at <Link
-                    href={'mailto:someone@example.com'}>someone@example.com</Link>
+                    href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</Link>
                 </ListItem>
             </Box>
             <Box display={'grid'} gridTemplateRows={'auto'} className={classes.detailsGrid}>

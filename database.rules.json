@@ -10,6 +10,7 @@
       }
     },
     "private-seating-choices": {
+      ".read": "auth.token.email === 'asbsocial1@gmail.com'",
       "$uid": {
         ".read": "auth.uid === 'fb-functions' || auth.uid === $uid",
         ".write": "auth.uid === 'fb-functions'"
