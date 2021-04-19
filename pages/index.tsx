@@ -35,7 +35,8 @@ export interface User {
 export const AppContext = createContext({
     user: null as null | User,
     selected: null as null | Seat,
-    previouslySubmitted: null as null | Seat | false
+    submittedSeat: null as null | Seat | false,
+    landingSlide: 0 as number // 0..2
 })
 
 const index = () => {
@@ -44,7 +45,9 @@ const index = () => {
     const [slideNumber, setSlideNumber] = useState(debugSkipToSlide)
     const [user, setUser] = useState<null | User>(null)
     const [selected, setSelected] = useState<null | Seat>(null)
-    const [previouslySubmitted, setPreviouslySubmitted] = useState<null | Seat | false>(null)
+    const [submittedSeat, setSubmittedSeat] = useState<null | Seat | false>(null)
+    const [landingSlide, setLandingSlide] = useState(0)
+
 
     useEffect(() => {
         // @ts-ignore
@@ -57,17 +60,16 @@ const index = () => {
                 const db = firebase.database()
                 const _doc = await db.ref(`private-seating-choices/${user.uid}`).once('value')
                 const doc = _doc.val()
+                console.debug(doc)
                 if(doc){
-                    // TODO: add actual seats into previously submitted stuf
-                    setPreviouslySubmitted({
-                        x: 0,
-                        y: 0,
-                        i: 18
+                    setSubmittedSeat({
+                        x: -1,
+                        y: -1,
+                        i: doc.selected || null
                     })
                 }else{
-                    setPreviouslySubmitted(false)
+                    setSubmittedSeat(false)
                 }
-                console.debug(doc)
             })()
         }
     }, [user])
@@ -76,11 +78,12 @@ const index = () => {
     return <AppContext.Provider value={{
         user,
         selected,
-        previouslySubmitted
+        submittedSeat,
+        landingSlide
     }}>
         {slideNumber === 1
         && <span>
-                <LandingPage setSlideNumber={setSlideNumber} setUser={setUser}/>
+                <LandingPage setSlideNumber={setSlideNumber} setUser={setUser} setLandingSlide={setLandingSlide}/>
             </span>
         }
         {slideNumber === 2
@@ -93,7 +96,7 @@ const index = () => {
             display: 'flex',
             flexDirection: 'column'
         }}>
-                <DynamicSelectionPage setSlideNumber={setSlideNumber} setSelected={setSelected}/>
+                <DynamicSelectionPage setSlideNumber={setSlideNumber} setSelected={setSelected} setSubmittedSeat={setSubmittedSeat}/>
             </span>
         }
     </AppContext.Provider>

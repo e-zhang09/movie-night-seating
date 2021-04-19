@@ -4,7 +4,7 @@ import firebase from 'firebase/app'
 import 'firebase/database'
 import { ReactNode, useContext, useEffect, useState } from 'react'
 import { FIREBASE_CONFIG } from '../../utils/constants'
-import { Box, Button, Typography, Fade, Checkbox } from '@material-ui/core'
+import { Box, Button, Typography, Fade, Checkbox, Tooltip } from '@material-ui/core'
 import { AppContext, User } from '../../pages'
 import { useRouter } from 'next/router'
 import StickToTop from '../StickToTop'
@@ -16,6 +16,7 @@ import Link from '@material-ui/core/Link'
 interface Props {
     setSlideNumber: (slide: number) => void,
     setUser: (user: null | User) => void,
+    setLandingSlide: (slide: number) => void
 }
 
 const useStyles = makeStyles(theme => ({
@@ -47,6 +48,15 @@ const useStyles = makeStyles(theme => ({
             maxWidth: '65%',
             marginBottom: 16
         }
+    },
+    checkbox: {
+        padding: 0,
+        transform: 'scale(2)',
+        maxHeight: 24,
+        marginLeft: 24,
+        '&[aria-disabled=true]:hover': {
+            cursor: 'not-allowed'
+        }
     }
 }))
 
@@ -59,12 +69,10 @@ const ListItem = ({ children }: { children: ReactNode }) => {
     </span>
 }
 
-const LandingPage = ({ setSlideNumber, setUser }: Props) => {
+const LandingPage = ({ setSlideNumber, setUser, setLandingSlide }: Props) => {
     const classes = useStyles()
-    const { user } = useContext(AppContext)
+    const { user, landingSlide } = useContext(AppContext)
     const router = useRouter()
-
-    const [slide, setSlide] = useState(0)
 
     function onAuthStateChange (callback: (user: null | User) => void) {
         return firebase.auth().onAuthStateChanged(async _user => {
@@ -150,20 +158,20 @@ const LandingPage = ({ setSlideNumber, setUser }: Props) => {
 
     useEffect(() => {
         console.debug('user', user)
-        if (user && slide === 0) {
+        if (user && landingSlide === 0) {
             if (user.email.includes('@student.fuhsd.org')) {
-                setSlide(1)
+                setLandingSlide(1)
             } else {
-                setSlide(12345)
+                setLandingSlide(12345)
             }
         } else if (!user) {
-            setSlide(0)
+            setLandingSlide(0)
         }
     }, [user])
 
     return <Layout title={'Movie Night | Welcome'}>
         <StickToTop>
-            <TopBarSlide show={slide === 0} _key={'landing-slide-1'}>
+            <TopBarSlide show={landingSlide === 0} _key={'landing-slide-1'}>
                 <Button variant="contained" size={'small'} onClick={() => {
                     // TODO: implement this
                     toast.info('oops! this has not been implemented yet')
@@ -173,7 +181,7 @@ const LandingPage = ({ setSlideNumber, setUser }: Props) => {
                     login()
                 }}>Login</Button>
             </TopBarSlide>
-            <TopBarSlide show={slide === 12345} _key={'landing-slide-re-log'}>
+            <TopBarSlide show={landingSlide === 12345} _key={'landing-slide-re-log'}>
                 <Button variant="contained" size={'small'} onClick={() => {
                     // TODO: implement this
                     toast.info('oops! this has not been implemented yet')
@@ -183,7 +191,7 @@ const LandingPage = ({ setSlideNumber, setUser }: Props) => {
                     logout()
                 }}>Logout</Button>
             </TopBarSlide>
-            <TopBarSlide show={slide === 1} _key={'landing-slide-2'}>
+            <TopBarSlide show={landingSlide === 1} _key={'landing-slide-2'}>
                 <Button variant="contained" size={'small'} onClick={() => {
                     // TODO: implement this
                     toast.info('oops! this has not been implemented yet')
@@ -193,7 +201,7 @@ const LandingPage = ({ setSlideNumber, setUser }: Props) => {
                 </div>
                 <Button variant="contained" size={'small'} disabled={true}>👉 Continue</Button>
             </TopBarSlide>
-            <TopBarSlide show={slide === 2} _key={'landing-slide-3'}>
+            <TopBarSlide show={landingSlide === 2} _key={'landing-slide-3'}>
                 <Button variant="contained" size={'small'} onClick={() => {
                     // TODO: implement this
                     toast.info('oops! this has not been implemented yet')
@@ -274,22 +282,29 @@ const LandingPage = ({ setSlideNumber, setUser }: Props) => {
                     Bathrooms are available (2 people in each at once)!
                 </ListItem>
             </Box>
-            <Box mb={30} display={'flex'} alignItems={'center'}>
+            <Box mb={10} display={'flex'} alignItems={'center'}>
                 <Typography variant={'h4'}>I've read everything</Typography>
-                <Checkbox
-                    checked={slide === 2}
-                    onChange={() => {
-                        setSlide(2)
-                    }}
-                    name="ive-read"
-                    color="primary"
-                    style={{
-                        padding: 0,
-                        transform: 'scale(2)',
-                        maxHeight: 24,
-                        marginLeft: 24
-                    }}
-                />
+                <Tooltip title={user ? 'You sure?' : 'Please log in first!'} placement="top">
+                    <div>
+                        <Checkbox
+                            checked={landingSlide === 2}
+                            disabled={!Boolean(user)}
+                            onChange={() => {
+                                setLandingSlide(2)
+                            }}
+                            name="ive-read"
+                            color="primary"
+                            className={classes.checkbox}
+                        />
+                    </div>
+                </Tooltip>
+            </Box>
+            <Box mb={20}>
+                {user && <Button onClick={() => {
+                    logout()
+                }} size={'small'}>
+                    Logout 🏃
+                </Button>}
             </Box>
         </Box>
     </Layout>

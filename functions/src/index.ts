@@ -180,6 +180,7 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
     async function submissionHandler () {
         const { idToken, selected } = req.body
         if (!idToken) {
+            console.debug('no id token')
             res.json({
                 status: "errored",
                 reason: "supply_id_token"
@@ -187,6 +188,7 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
             return
         }
         if (typeof selected !== "number") {
+            console.debug('no selected seat')
             res.json({
                 status: "errored",
                 reason: "supply_selection"
@@ -195,6 +197,7 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
         }
         const user = await auth.verifyIdToken(idToken || "")
         if (!user) {
+            console.debug('no user', user, idToken.substr(0, 10))
             res.json({
                 status: "errored",
                 reason: "bad_id_token"
@@ -203,6 +206,7 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
         }
         const { name, email, uid, picture } = user
         if (!name || !email || !uid) {
+            console.debug('no user (email or uid or name)', name, email, uid, picture?.substr(0,5))
             res.json({
                 status: "errored",
                 reason: "bad_id_token"
@@ -213,6 +217,7 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
         const snapshot = await privateRef.child(uid).once("value")
         const value = snapshot.val()
         if (value) {
+            console.debug('already registered')
             res.json({
                 status: "errored",
                 reason: "already_registered"

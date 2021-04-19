@@ -20,7 +20,7 @@ const useStyles = makeStyles((theme) => ({
 interface Props {
     open: boolean
     setOpen: (bool: boolean) => void
-    seat?: Seat | boolean
+    seat?: Seat | false | null
     submitting: boolean
 }
 
@@ -53,8 +53,8 @@ const SuccessModal = ({ open, setOpen, seat, submitting }: Props) => {
                         </>
                         : <>
                             <h2 id="transition-modal-title">Success!</h2>
-                            <p id="transition-modal-description">react-transition-group animates me.</p>
-                            {JSON.stringify(seat)}
+                            <p id="transition-modal-description">Your seat choice{(seat && typeof seat?.i === 'number') ? `(#${seat.i})` : ''} has been recorded. You should expect a confirmation email soon!</p>
+                            <p>TODO: [Seat map image here]</p>
                         </>
                     }
                 </div>

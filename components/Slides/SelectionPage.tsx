@@ -315,7 +315,8 @@ export const UIContext = createContext({
 
 interface Props {
     setSlideNumber: (slide: number) => void,
-    setSelected: (selected: Seat) => void
+    setSelected: (selected: Seat) => void,
+    setSubmittedSeat: (seat: Seat | false | null) => void
 }
 
 
@@ -323,13 +324,13 @@ const DynamicSuccessModal = dynamic(() => import('../SuccessModal'))
 
 const SelectionPage = ({
                            setSlideNumber,
-                           setSelected
+                           setSelected,
+                           setSubmittedSeat
                        }: Props) => {
     const [useCircle, setUseCircle] = useState(0)
     const [highlight, setHighlight] = useState(0)
     const [scrollToHighlight, setScrollToHighlight] = useState(0)
 
-    const [successSubmit, setSuccessSubmit] = useState<boolean | Seat>(false)
     const [openModal, setOpenModal] = useState(false)
     const [submitting, setSubmitting] = useState(false)
 
@@ -347,7 +348,7 @@ const SelectionPage = ({
     const classes = useStyles({
         containerWidth: 1
     })
-    const { selected, user } = useContext(AppContext)
+    const { selected, user, submittedSeat } = useContext(AppContext)
 
     const defaultScale = (typeof window !== 'undefined' && window.innerHeight) ? ((window.innerHeight - 170 - (window.innerWidth < 1279.95 ? (window.innerHeight * 0.05) : 0)) / svgSize.height - 0.05) : 0.5
 
@@ -403,7 +404,7 @@ const SelectionPage = ({
         } else {
             if (selected) {
                 toast.success(`Success! You've signed up for seat #${selected.i}`)
-                setSuccessSubmit(selected)
+                setSubmittedSeat(selected)
             } else {
                 console.debug('wot') // should never happen
             }
@@ -413,25 +414,29 @@ const SelectionPage = ({
 
     return (
         <Layout title="Movie Night | Choose Your Seat">
-            <DynamicSuccessModal open={openModal} seat={successSubmit} setOpen={bool => setOpenModal(bool)}
+            <DynamicSuccessModal open={openModal} seat={submittedSeat} setOpen={bool => setOpenModal(bool)}
                 submitting={submitting}/>
             <StickToTop>
-                <TopBarSlide show={typeof selected?.i === 'number'} _key={'selection-page-slide-2'}>
+                <TopBarSlide
+                    // @ts-ignore Boolean(submittedSeat) should short circuit it
+                    show={typeof selected?.i === 'number' || (Boolean(submittedSeat) && typeof submittedSeat?.i === 'number')}
+                    _key={'selection-page-slide-2'}>
                     <Button variant="contained" size={'small'} onClick={() => {
                         setSlideNumber(1)
                     }}>Back</Button>
-                    <div>Selected seat #{selected?.i}!</div>
+                    <div>{submittedSeat ? 'Your seat is' : 'Selected seat'} #{submittedSeat ? submittedSeat.i : selected?.i}!</div>
                     <Button variant="contained" size={'small'} onClick={() => {
-                        if (successSubmit) {
+                        if (submittedSeat) {
                             setOpenModal(true)
                         } else {
                             console.debug('selected', selected, 'for user', user)
                             submitSeatingChoice().then(_r => {
                             })
                         }
-                    }}>{successSubmit ? 'View Confirmation' : 'Submit'}</Button>
+                    }}>{submittedSeat ? 'View Confirmation' : 'Submit'}</Button>
                 </TopBarSlide>
-                <TopBarSlide _key={'selection-page-slide-1'} show={typeof selected?.i !== 'number'}>
+                <TopBarSlide _key={'selection-page-slide-1'}
+                    show={typeof selected?.i !== 'number' && (!submittedSeat || typeof submittedSeat?.i !== 'number')}>
                     <Button variant="contained" size={'small'} onClick={() => {
                         setSlideNumber(1)
                     }}>Back</Button>
@@ -492,13 +497,13 @@ const SelectionPage = ({
                                                             padding={padding}
                                                             onHover={pt => {
                                                                 // console.debug(pt, pt.taken, pt.i)
-                                                                if (highlight !== pt.i && !pt.taken) {
+                                                                if (highlight !== pt.i && !pt.taken && !submittedSeat) {
                                                                     setHighlight(pt.i)
                                                                     setScrollToHighlight(pt.i)
                                                                 }
                                                             }}
                                                             onClick={pt => {
-                                                                if (!pt.taken) {
+                                                                if (!pt.taken && !submittedSeat) {
                                                                     setSelected(pt)
                                                                 }
                                                             }}
@@ -512,12 +517,12 @@ const SelectionPage = ({
                                                     seats={seats}
                                                     padding={padding}
                                                     onHover={pt => {
-                                                        if (highlight !== pt.i && !pt.taken) {
+                                                        if (highlight !== pt.i && !pt.taken && !submittedSeat) {
                                                             setHighlight(pt.i)
                                                         }
                                                     }}
                                                     onClick={pt => {
-                                                        if (!pt.taken) {
+                                                        if (!pt.taken && !submittedSeat) {
                                                             setSelected(pt)
                                                         }
                                                     }}

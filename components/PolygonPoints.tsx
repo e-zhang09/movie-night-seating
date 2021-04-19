@@ -3,13 +3,14 @@ import clsx from 'clsx'
 import { Fragment } from 'react'
 import { useContext } from 'react'
 import { quadBackgroundColor, UIContext } from './Slides/SelectionPage'
+import { AppContext } from '../pages'
 
 export interface Point {
     x: number
     y: number
 }
 
-export interface Seat extends Point{
+export interface Seat extends Point {
     i: number
 }
 
@@ -51,6 +52,19 @@ const useStyles = makeStyles(theme => ({
         '&.taken > rect, &.taken > circle': {
             opacity: 0.2
         },
+
+        '&.submitted > rect, &.submitted > circle': {
+            opacity: 1,
+            fill: 'rgb(86,200,122)',
+            position: 'relative',
+            '&:after':{
+                content: 'hi',
+                position: 'absolute',
+                top: 0,
+                left: 0
+            }
+        },
+
         '& > text': {
             textAnchor: 'middle',
             alignmentBaseline: 'middle',
@@ -89,6 +103,7 @@ const PolygonPoints = ({
 
     const classes = useStyles()
     const { useCircle, selected, highlight } = useContext(UIContext)
+    const { submittedSeat } = useContext(AppContext)
 
     const svgHeight = Math.max(...bounds.map(bound => Math.max(...bound.map(pt => pt.y)))) + padding.top * 2
     const svgWidth = Math.max(...bounds.map(bound => Math.max(...bound.map(pt => pt.x)))) + padding.left * 2
@@ -166,7 +181,7 @@ const PolygonPoints = ({
             <g>
                 {seats.map(seat =>
                     <g key={seat.i} onMouseOver={() => onHover(seat)} onClick={() => onClick(seat)}
-                        className={clsx(classes.seatGroup, (highlight === seat.i && 'highlighted'), seat.taken && 'taken', (selected === seat.i && 'selected'))}>
+                        className={clsx(classes.seatGroup, (highlight === seat.i && 'highlighted'), seat.taken && 'taken', (selected === seat.i && 'selected'), (submittedSeat && submittedSeat?.i === seat.i && 'submitted'))}>
                         {useCircle > 0
                             ? <circle
                                 cx={seat.x + padding.left}
@@ -179,7 +194,7 @@ const PolygonPoints = ({
                             x={seat.x + padding.left}
                             y={seat.y + 1 + padding.top}
                         >{seat.i}</text>
-                        {seat.taken &&
+                        {seat.taken && !submittedSeat &&
                         <line x1={seat.x - 10 + padding.left} x2={seat.x + 10 + padding.left} y1={seat.y + padding.top}
                             y2={seat.y + padding.top}/>}
                     </g>
