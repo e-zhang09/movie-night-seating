@@ -21,7 +21,7 @@ function MyApp ({ Component, pageProps }: AppProps) {
             <CssBaseline/>
             <ToastContainer
                 position='top-right'
-                autoClose={8000}
+                autoClose={10000}
                 limit={3}
                 hideProgressBar={false}
                 newestOnTop={false}

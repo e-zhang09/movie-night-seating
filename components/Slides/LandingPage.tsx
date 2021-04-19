@@ -2,22 +2,62 @@ import { makeStyles } from '@material-ui/core/styles'
 import Layout from '../Layout'
 import firebase from 'firebase/app'
 import 'firebase/database'
-import { useContext, useEffect, useState } from 'react'
+import { ReactNode, useContext, useEffect, useState } from 'react'
 import { FIREBASE_CONFIG } from '../../utils/constants'
-import { Box, Button } from '@material-ui/core'
+import { Box, Button, Typography, Fade, Checkbox } from '@material-ui/core'
 import { AppContext, User } from '../../pages'
 import { useRouter } from 'next/router'
 import StickToTop from '../StickToTop'
 import TopBarSlide from '../TopBarSlide'
 import { toast } from 'react-toastify'
-
+import SubdirectoryArrowRightIcon from '@material-ui/icons/SubdirectoryArrowRight'
+import Link from '@material-ui/core/Link'
 
 interface Props {
     setSlideNumber: (slide: number) => void,
     setUser: (user: null | User) => void,
 }
 
-const useStyles = makeStyles(theme => ({}))
+const useStyles = makeStyles(theme => ({
+    rowOrientate: {
+        display: 'flex',
+        flexDirection: 'column-reverse',
+        justifyContent: 'center',
+        alignItems: 'center',
+        [theme.breakpoints.down('md')]: {
+            '& > *': {
+                width: '100%'
+            }
+        },
+        [theme.breakpoints.up('md')]: {
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr'
+        }
+    },
+    gridRows: {
+        rowGap: 8,
+        [theme.breakpoints.up('md')]: {
+            rowGap: 40
+        }
+    },
+    detailsGrid: {
+        rowGap: 8,
+        maxWidth: '90%',
+        [theme.breakpoints.up('md')]: {
+            maxWidth: '65%',
+            marginBottom: 16
+        }
+    }
+}))
+
+const ListItem = ({ children }: { children: ReactNode }) => {
+    return <span style={{ display: 'flex' }}>
+        <SubdirectoryArrowRightIcon style={{ marginTop: 2 }}/>
+        <Typography variant={'h6'} style={{
+            marginLeft: 4
+        }}>{children}</Typography>
+    </span>
+}
 
 const LandingPage = ({ setSlideNumber, setUser }: Props) => {
     const classes = useStyles()
@@ -123,7 +163,7 @@ const LandingPage = ({ setSlideNumber, setUser }: Props) => {
 
     return <Layout title={'Movie Night | Welcome'}>
         <StickToTop>
-            <TopBarSlide show={slide === 0} key={'landing-slide-1'}>
+            <TopBarSlide show={slide === 0} _key={'landing-slide-1'}>
                 <Button variant="contained" size={'small'} onClick={() => {
                     // TODO: implement this
                     toast.info('oops! this has not been implemented yet')
@@ -133,7 +173,7 @@ const LandingPage = ({ setSlideNumber, setUser }: Props) => {
                     login()
                 }}>Login</Button>
             </TopBarSlide>
-            <TopBarSlide show={slide === 12345} key={'landing-slide-re-log'}>
+            <TopBarSlide show={slide === 12345} _key={'landing-slide-re-log'}>
                 <Button variant="contained" size={'small'} onClick={() => {
                     // TODO: implement this
                     toast.info('oops! this has not been implemented yet')
@@ -143,7 +183,7 @@ const LandingPage = ({ setSlideNumber, setUser }: Props) => {
                     logout()
                 }}>Logout</Button>
             </TopBarSlide>
-            <TopBarSlide show={slide === 1} key={'landing-slide-2'}>
+            <TopBarSlide show={slide === 1} _key={'landing-slide-2'}>
                 <Button variant="contained" size={'small'} onClick={() => {
                     // TODO: implement this
                     toast.info('oops! this has not been implemented yet')
@@ -153,7 +193,7 @@ const LandingPage = ({ setSlideNumber, setUser }: Props) => {
                 </div>
                 <Button variant="contained" size={'small'} disabled={true}>👉 Continue</Button>
             </TopBarSlide>
-            <TopBarSlide show={slide === 2} key={'landing-slide-3'}>
+            <TopBarSlide show={slide === 2} _key={'landing-slide-3'}>
                 <Button variant="contained" size={'small'} onClick={() => {
                     // TODO: implement this
                     toast.info('oops! this has not been implemented yet')
@@ -166,8 +206,91 @@ const LandingPage = ({ setSlideNumber, setUser }: Props) => {
                 }}>👉 Continue</Button>
             </TopBarSlide>
         </StickToTop>
-        <Box>
-
+        <Box mt={4} px={'5vw'} display={'grid'} gridTemplateRows={'auto'} justifyContent={'center'}
+            alignItems={'center'} className={classes.gridRows}>
+            <Fade in={true} timeout={1000}>
+                <Box className={classes.rowOrientate}>
+                    <Box mb={3}>
+                        <Typography variant={'h2'} style={{
+                            fontWeight: 700
+                        }}>Lynbrook Movie Night</Typography>
+                        <Typography variant={'h4'} style={{
+                            fontWeight: 700
+                        }}>Friday, April 30th</Typography>
+                    </Box>
+                    <Box>
+                        <Box style={{
+                            height: 'min(21vh, 400px)',
+                            width: '100%',
+                            backgroundImage: 'url(https://cdn.statically.io/img/movie-night-seating.web.app/f=auto,h=400/assets/soul_logo_rendered_color.png)',
+                            backgroundPositionX: 'center',
+                            backgroundPositionY: 'center',
+                            backgroundRepeat: 'no-repeat',
+                            backgroundSize: 'contain'
+                        }}/>
+                    </Box>
+                </Box>
+            </Fade>
+            <Box display={'grid'} gridTemplateRows={'auto'} className={classes.detailsGrid} style={{
+                marginTop: -30
+            }}>
+                <Typography variant={'h4'}>Details!</Typography>
+                <ListItem>
+                    Each person may only reserve one seat. If you want to sit with your
+                    friends, be sure to <b>coordinate</b> with them first! The seat reservation spots are live ⚡
+                </ListItem>
+                <ListItem>
+                    The In-Person Movie Night will be on Friday April 30th, make sure to mark your calendars.
+                </ListItem>
+                <ListItem>
+                    Checking-In will start at 7:00 PM at the Office drive through.
+                </ListItem>
+                <ListItem>
+                    The movie, Disney/Pixar's Soul, will starts at <b>7:45 PM</b>. Can't wait to see you all there!!
+                </ListItem>
+                <ListItem>
+                    Please log-in and do all registrations with your <b>@student.fuhsd.org</b> email account!
+                </ListItem>
+                <ListItem>
+                    Any questions or concerns? Feel free to email us at <Link
+                    href={'mailto:someone@example.com'}>someone@example.com</Link>
+                </ListItem>
+            </Box>
+            <Box display={'grid'} gridTemplateRows={'auto'} className={classes.detailsGrid}>
+                <Typography variant={'h4'}>Rules and Safety Precautions</Typography>
+                <ListItem>
+                    Masks on at <b>all</b> times.
+                </ListItem>
+                <ListItem>
+                    No food or drinks ({'sad, I know :<'})
+                </ListItem>
+                <ListItem>
+                    Follow social distancing guidelines 🪑 (6+ft) 🪑
+                </ListItem>
+                <ListItem>
+                    Remain in your seat at <b>all</b> times.
+                </ListItem>
+                <ListItem>
+                    Bathrooms are available (2 people in each at once)!
+                </ListItem>
+            </Box>
+            <Box mb={30} display={'flex'} alignItems={'center'}>
+                <Typography variant={'h4'}>I've read everything</Typography>
+                <Checkbox
+                    checked={slide === 2}
+                    onChange={() => {
+                        setSlide(2)
+                    }}
+                    name="ive-read"
+                    color="primary"
+                    style={{
+                        padding: 0,
+                        transform: 'scale(2)',
+                        maxHeight: 24,
+                        marginLeft: 24
+                    }}
+                />
+            </Box>
         </Box>
     </Layout>
 }

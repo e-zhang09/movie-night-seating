@@ -15,6 +15,7 @@ import { toast } from 'react-toastify'
 import dynamic from 'next/dynamic'
 import StickToTop from '../StickToTop'
 import TopBarSlide from '../TopBarSlide'
+import sleep from '../../utils/sleep'
 
 // coordinate system: 0,0 top left
 
@@ -330,6 +331,7 @@ const SelectionPage = ({
 
     const [successSubmit, setSuccessSubmit] = useState<boolean | Seat>(false)
     const [openModal, setOpenModal] = useState(false)
+    const [submitting, setSubmitting] = useState(false)
 
     // const radius = 40 // 4ft
 
@@ -372,50 +374,56 @@ const SelectionPage = ({
     }
 
     const submitSeatingChoice = async () => {
+        setSubmitting(true)
+        setOpenModal(true)
+
         let errored = false
         // DEV_SUBMISSION_URL
         const result = await postData(BASE_SUBMISSION_URL, {
             idToken: user?.idToken,
             selected: selected?.i || -1
         }).catch(err => {
-            toast.error('Something went wrong! Please refresh to try again')
             errored = true
         })
-        if (errored) return
-        if (result?.status !== 'successful') {
+
+        await sleep(Math.random() * 2500 + 2500) // lol
+
+        if (result?.status !== 'successful' || errored) {
             console.debug('result', result)
             if (result?.reason === 'seat_already_taken') {
                 toast.error('Oops! That seat has already been taken by someone else. Please select a new seat to continue!')
             } else if (result?.reason === 'already_registered') {
-                toast.warn('Our records show that you\'ve already registered for this event and we will only allow one submission per student!')
+                toast.warn('Our records show that you\'ve already registered for this event but we will only allow one submission per student!')
             } else if (result?.reason === 'supply_id_token' || result?.reason === 'bad_id_token') {
                 toast.error('Oops! Something went wrong with verifying your email address. Please refresh this page to try again!')
             } else {
                 toast.error(`Error: ${result?.reason}, please try again later!`)
             }
+            setOpenModal(false)
         } else {
             if (selected) {
                 toast.success(`Success! You've signed up for seat #${selected.i}`)
                 setSuccessSubmit(selected)
-                setOpenModal(true)
             } else {
                 console.debug('wot') // should never happen
             }
         }
+        setSubmitting(false)
     }
 
     return (
         <Layout title="Movie Night | Choose Your Seat">
-            <DynamicSuccessModal open={openModal} seat={successSubmit} setOpen={bool => setOpenModal(bool)}/>
+            <DynamicSuccessModal open={openModal} seat={successSubmit} setOpen={bool => setOpenModal(bool)}
+                submitting={submitting}/>
             <StickToTop>
-                <TopBarSlide show={typeof selected?.i === 'number'} key={'selection-page-slide-2'}>
+                <TopBarSlide show={typeof selected?.i === 'number'} _key={'selection-page-slide-2'}>
                     <Button variant="contained" size={'small'} onClick={() => {
                         setSlideNumber(1)
                     }}>Back</Button>
                     <div>Selected seat #{selected?.i}!</div>
                     <Button variant="contained" size={'small'} onClick={() => {
                         if (successSubmit) {
-
+                            setOpenModal(true)
                         } else {
                             console.debug('selected', selected, 'for user', user)
                             submitSeatingChoice().then(_r => {
@@ -423,7 +431,7 @@ const SelectionPage = ({
                         }
                     }}>{successSubmit ? 'View Confirmation' : 'Submit'}</Button>
                 </TopBarSlide>
-                <TopBarSlide key={'selection-page-slide-1'} show={typeof selected?.i !== 'number'}>
+                <TopBarSlide _key={'selection-page-slide-1'} show={typeof selected?.i !== 'number'}>
                     <Button variant="contained" size={'small'} onClick={() => {
                         setSlideNumber(1)
                     }}>Back</Button>

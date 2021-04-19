@@ -21,13 +21,14 @@ interface Props {
     open: boolean
     setOpen: (bool: boolean) => void
     seat?: Seat | boolean
+    submitting: boolean
 }
 
-const SuccessModal = ({ open, setOpen, seat }: Props) => {
+const SuccessModal = ({ open, setOpen, seat, submitting }: Props) => {
     const classes = useStyles()
 
     const handleClose = () => {
-        setOpen(false)
+        if (!submitting) setOpen(false)
     }
 
     return (
@@ -35,7 +36,7 @@ const SuccessModal = ({ open, setOpen, seat }: Props) => {
             aria-labelledby="transition-modal-title"
             aria-describedby="transition-modal-description"
             className={classes.modal}
-            open={open}
+            open={open || submitting}
             onClose={handleClose}
             closeAfterTransition
             BackdropComponent={Backdrop}
@@ -45,9 +46,17 @@ const SuccessModal = ({ open, setOpen, seat }: Props) => {
         >
             <Fade in={open}>
                 <div className={classes.paper}>
-                    <h2 id="transition-modal-title">Transition modal</h2>
-                    <p id="transition-modal-description">react-transition-group animates me.</p>
-                    {JSON.stringify(seat)}
+                    {submitting
+                        ? <>
+                            <h2 id="transition-modal-title">Submitting your seating choice</h2>
+                            <p id="transition-modal-description">Please hold on...</p>
+                        </>
+                        : <>
+                            <h2 id="transition-modal-title">Success!</h2>
+                            <p id="transition-modal-description">react-transition-group animates me.</p>
+                            {JSON.stringify(seat)}
+                        </>
+                    }
                 </div>
             </Fade>
         </Modal>

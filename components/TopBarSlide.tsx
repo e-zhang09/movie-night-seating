@@ -5,7 +5,7 @@ import { makeStyles } from '@material-ui/core/styles'
 interface Props {
     children: ReactNode
     show: boolean
-    key: string
+    _key: string
     first?: boolean
 }
 
@@ -34,7 +34,7 @@ const useStyles = makeStyles(theme => ({
     }
 }))
 
-const TopBarSlide = ({ children, show, key, first }: Props) => {
+const TopBarSlide = ({ children, show, _key, first }: Props) => {
     const classes = useStyles()
     const [_show, _setShow] = useState(false)
 
@@ -49,7 +49,7 @@ const TopBarSlide = ({ children, show, key, first }: Props) => {
     }, [show])
 
     return <Slide
-        key={key}
+        key={_key}
         direction={'right'}
         in={_show}
         timeout={{
