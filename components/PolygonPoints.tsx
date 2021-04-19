@@ -9,6 +9,10 @@ export interface Point {
     y: number
 }
 
+export interface Seat extends Point{
+    i: number
+}
+
 interface Props {
     bounds: Point[][]
     onHover: (pt: (Point & { i: number, taken?: boolean })) => void

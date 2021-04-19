@@ -25,8 +25,7 @@ const useStyles = makeStyles<Theme, Pick<Props, 'padding' | 'svgSize'>>(theme =>
         right: '5vw',
         display: 'flex',
         margin: 'auto',
-        top: 0,
-        bottom: 70,
+        top: 240,
         [theme.breakpoints.down('md')]: {
             display: 'none'
             // position: 'absolute',
@@ -36,7 +35,7 @@ const useStyles = makeStyles<Theme, Pick<Props, 'padding' | 'svgSize'>>(theme =>
             // overflowX: 'scroll'
         },
         [theme.breakpoints.up('md')]: {
-            maxHeight: props => Math.min(props.svgSize.height - (props.padding.left * 2), 500),
+            maxHeight: 'min(calc(100vh - 240px - 100px), 500px)',
             overflowY: 'scroll',
             flexDirection: 'column'
         }

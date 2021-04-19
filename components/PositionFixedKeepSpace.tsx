@@ -1,4 +1,5 @@
 import { ReactNode } from 'react'
+import { Box } from '@material-ui/core'
 
 interface Props {
     children: ReactNode
@@ -7,9 +8,9 @@ interface Props {
 
 const PositionFixedKeepSpace = ({ children, className }: Props) => {
     return <>
-        <div className={className}>
+        <Box className={className} boxShadow={5}>
             {children}
-        </div>
+        </Box>
         <div className={className} style={{
             visibility: 'hidden',
             position: 'unset'

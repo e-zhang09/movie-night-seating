@@ -1,6 +1,7 @@
 import React, { ReactNode } from 'react'
 import { FirebaseDatabaseProvider } from "@react-firebase/database"
-import firebase from 'firebase'
+import firebase from 'firebase/app'
+import 'firebase/database'
 import { FIREBASE_CONFIG } from '../utils/constants'
 import Head from 'next/head'
 

@@ -229,6 +229,14 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
 
         const seat = _seat[key]
 
+        if (!seat) {
+            res.json({
+                status: "errored",
+                reason: "seat_already_taken"
+            })
+            return
+        }
+
         if (seat?.taken) {
             res.json({
                 status: "errored",
@@ -245,7 +253,7 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
             _errored = 'seat_already_taken'
         })
 
-        if(_errored){
+        if (_errored) {
             res.json({
                 status: "errored",
                 reason: _errored

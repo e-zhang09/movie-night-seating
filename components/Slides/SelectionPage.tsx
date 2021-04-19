@@ -1,16 +1,20 @@
 import Layout from '../Layout'
-import PolygonPoints, { Point } from '../PolygonPoints'
+import PolygonPoints, { Point, Seat } from '../PolygonPoints'
 import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch'
 import { useRef, useState, createContext, useContext, useMemo, useEffect, useCallback } from 'react'
 import SeatsList from '../SeatsList'
 import { makeStyles, Theme } from '@material-ui/core/styles'
-import { Box, Button, Slide } from '@material-ui/core'
+import { Box, Button, Slide, Typography } from '@material-ui/core'
 import { FirebaseDatabaseNode } from "@react-firebase/database"
 import { AppContext } from '../../pages'
-import generateInitPoints from '../../utils/generateInitPoints'
 import ZoomInIcon from '@material-ui/icons/ZoomIn'
 import ZoomOutIcon from '@material-ui/icons/ZoomOut'
 import PositionFixedKeepSpace from '../PositionFixedKeepSpace'
+import { BASE_SUBMISSION_URL } from '../../utils/constants'
+import { toast } from 'react-toastify'
+import dynamic from 'next/dynamic'
+import StickToTop from '../StickToTop'
+import TopBarSlide from '../TopBarSlide'
 
 // coordinate system: 0,0 top left
 
@@ -191,7 +195,7 @@ interface StyleProps {
     containerWidth: number
 }
 
-const useStyles = makeStyles<Theme, StyleProps>(theme => ({
+const useStyles = makeStyles<Theme, StyleProps>((theme) => ({
     tools: {
         display: 'flex',
         justifyContent: 'center',
@@ -230,42 +234,15 @@ const useStyles = makeStyles<Theme, StyleProps>(theme => ({
     locationHeadings: {
         textAlign: 'center',
         fontWeight: 700,
-        fontSize: 20
-    },
-    stickToTop: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        width: '100%',
-        zIndex: 9,
-        background: 'rgb(250,250,250)',
-        fontSize: 18,
-        fontWeight: 900
-    },
-    topBarHorizontalContainer: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '20px 15px',
-        [theme.breakpoints.up('md')]: {
-            padding: '20px 50px',
-            justifyContent: 'center',
-            '& > div': {
-                textAlign: 'center'
-            }
-        },
-        '& > *': {
-            marginLeft: 12
-        },
-        '& > *:first-child': {
-            marginLeft: 0
-        },
-        '& > div': {
-            flex: 1
-        }
+        fontSize: 20,
+        marginTop: 10,
+        marginBottom: 10
     },
     pickersContainer: {
+        flex: 1,
+        width: '100%',
+        position: 'relative',
+
         [theme.breakpoints.down('md')]: {
             display: 'flex',
             flexDirection: 'column',
@@ -285,17 +262,18 @@ const useStyles = makeStyles<Theme, StyleProps>(theme => ({
     },
     listPicker: {
         background: 'repeating-linear-gradient(28deg, rgb(250,250,250), rgb(250,250,250) 10px, rgb(245,245,245) 10px, rgb(245,245,245) 20px)',
+        position: 'absolute',
+        height: '100%',
+        '& > div': {
+            height: 'inherit'
+        },
         [theme.breakpoints.down('md')]: {
-            position: 'absolute',
-            maxHeight: 'calc(100vh - 238px)',
             '& > div': {
-                maxHeight: 'calc(100vh - 238px)',
                 width: '100vw'
-            },
+            }
             // transformOrigin: 'top left',
             // transform: `scale(${typeof window !== 'undefined' ? (((window?.innerWidth || svgSize.width) - 40) / svgSize.width) : 1})`,
             //translate(-${(1-correctRatio) * 100}%, -${(1-correctRatio) * 100}%) didnt work
-            top: 0
         }
     },
     pickerOverallContainer: {
@@ -307,22 +285,19 @@ const useStyles = makeStyles<Theme, StyleProps>(theme => ({
             width: 'unset'
         }
     },
-    scrollContainer: {
-        maxHeight: 'calc(100vh - 100px)',
-        overflowY: 'auto',
-        width: '100%'
-    },
     sizingContainer: {
-        alignItems: 'flex-start',
+        alignItems: 'center',
+        flexDirection: 'column',
         display: 'flex',
-        justifyContent: 'center',
-        height: 'calc(100vh - 100px)'
+        justifyContent: 'flex-start',
+        height: '100%',
+        [theme.breakpoints.down('md')]: {
+            height: '84%'
+        }
         // overflowY: 'auto'
     },
     placeholderSizingContainer: {
-        position: 'absolute',
-        top: 0,
-        bottom: 0,
+        position: 'relative',
         width: '100%',
         display: 'flex',
         alignItems: 'center',
@@ -339,13 +314,22 @@ export const UIContext = createContext({
 
 interface Props {
     setSlideNumber: (slide: number) => void,
-    setSelected: (selected: number) => void
+    setSelected: (selected: Seat) => void
 }
 
-const SelectionPage = ({ setSlideNumber, setSelected }: Props) => {
+
+const DynamicSuccessModal = dynamic(() => import('../SuccessModal'))
+
+const SelectionPage = ({
+                           setSlideNumber,
+                           setSelected
+                       }: Props) => {
     const [useCircle, setUseCircle] = useState(0)
     const [highlight, setHighlight] = useState(0)
     const [scrollToHighlight, setScrollToHighlight] = useState(0)
+
+    const [successSubmit, setSuccessSubmit] = useState<boolean | Seat>(false)
+    const [openModal, setOpenModal] = useState(false)
 
     // const radius = 40 // 4ft
 
@@ -361,172 +345,204 @@ const SelectionPage = ({ setSlideNumber, setSelected }: Props) => {
     const classes = useStyles({
         containerWidth: 1
     })
-    const { selected } = useContext(AppContext)
+    const { selected, user } = useContext(AppContext)
+
+    const defaultScale = (typeof window !== 'undefined' && window.innerHeight) ? ((window.innerHeight - 170 - (window.innerWidth < 1279.95 ? (window.innerHeight * 0.05) : 0)) / svgSize.height - 0.05) : 0.5
+
+    useEffect(() => {
+        console.debug('default scale', defaultScale)
+    }, [defaultScale])
+
+    async function postData (url = '', data = {}) {
+        // Default options are marked with *
+        const response = await fetch(url, {
+            method: 'POST', // *GET, POST, PUT, DELETE, etc.
+            mode: 'cors', // no-cors, *cors, same-origin
+            cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+            credentials: 'same-origin', // include, *same-origin, omit
+            headers: {
+                'Content-Type': 'application/json'
+                // 'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            redirect: 'follow', // manual, *follow, error
+            referrerPolicy: 'no-referrer', // no-referrer, *no-referrer-when-downgrade, origin, origin-when-cross-origin, same-origin, strict-origin, strict-origin-when-cross-origin, unsafe-url
+            body: JSON.stringify(data) // body data type must match "Content-Type" header
+        })
+        return response.json() // parses JSON response into native JavaScript objects
+    }
+
+    const submitSeatingChoice = async () => {
+        let errored = false
+        // DEV_SUBMISSION_URL
+        const result = await postData(BASE_SUBMISSION_URL, {
+            idToken: user?.idToken,
+            selected: selected?.i || -1
+        }).catch(err => {
+            toast.error('Something went wrong! Please refresh to try again')
+            errored = true
+        })
+        if (errored) return
+        if (result?.status !== 'successful') {
+            console.debug('result', result)
+            if (result?.reason === 'seat_already_taken') {
+                toast.error('Oops! That seat has already been taken by someone else. Please select a new seat to continue!')
+            } else if (result?.reason === 'already_registered') {
+                toast.warn('Our records show that you\'ve already registered for this event and we will only allow one submission per student!')
+            } else if (result?.reason === 'supply_id_token' || result?.reason === 'bad_id_token') {
+                toast.error('Oops! Something went wrong with verifying your email address. Please refresh this page to try again!')
+            } else {
+                toast.error(`Error: ${result?.reason}, please try again later!`)
+            }
+        } else {
+            if (selected) {
+                toast.success(`Success! You've signed up for seat #${selected.i}`)
+                setSuccessSubmit(selected)
+                setOpenModal(true)
+            } else {
+                console.debug('wot') // should never happen
+            }
+        }
+    }
 
     return (
         <Layout title="Movie Night | Choose Your Seat">
-            <PositionFixedKeepSpace className={classes.stickToTop}>
-                <Slide
-                    key={typeof selected === 'number' ? `selected` : `-1`}
-                    direction={'right'}
-                    in={typeof selected === 'number'}
-                    timeout={500}
-                    unmountOnExit={true}
-                    addEndListener={(node, done) =>
-                        node.addEventListener &&
-                        node.addEventListener('transitionend', done, false)
-                    }
-                >
-                    <div className={classes.topBarHorizontalContainer}>
-                        <Button variant="contained" size={'small'} onClick={() => {
-                            setSlideNumber(1)
-                        }}>Back</Button>
-                        <div>Selected seat #{selected}!</div>
-                        <Button variant="contained" size={'small'} onClick={() => {
-                            setSlideNumber(3)
-                        }}>Next</Button>
-                    </div>
-                </Slide>
-                <Slide
-                    key={typeof selected === 'number' ? `selected-now` : `now-1`}
-                    direction={'right'}
-                    in={typeof selected !== 'number'}
-                    timeout={500}
-                    unmountOnExit={true}
-                    addEndListener={(node, done) =>
-                        node.addEventListener &&
-                        node.addEventListener('transitionend', done, false)
-                    }
-                >
-                    <Box className={classes.topBarHorizontalContainer} boxShadow={4}>
-                        <Button variant="contained" size={'small'} onClick={() => {
-                            setSlideNumber(1)
-                        }}>Back</Button>
-                        <div>Select a seat on the image!</div>
-                        <Button variant="contained" size={'small'} disabled>Next</Button>
-                    </Box>
-                </Slide>
-            </PositionFixedKeepSpace>
+            <DynamicSuccessModal open={openModal} seat={successSubmit} setOpen={bool => setOpenModal(bool)}/>
+            <StickToTop>
+                <TopBarSlide show={typeof selected?.i === 'number'} key={'selection-page-slide-2'}>
+                    <Button variant="contained" size={'small'} onClick={() => {
+                        setSlideNumber(1)
+                    }}>Back</Button>
+                    <div>Selected seat #{selected?.i}!</div>
+                    <Button variant="contained" size={'small'} onClick={() => {
+                        if (successSubmit) {
+
+                        } else {
+                            console.debug('selected', selected, 'for user', user)
+                            submitSeatingChoice().then(_r => {
+                            })
+                        }
+                    }}>{successSubmit ? 'View Confirmation' : 'Submit'}</Button>
+                </TopBarSlide>
+                <TopBarSlide key={'selection-page-slide-1'} show={typeof selected?.i !== 'number'}>
+                    <Button variant="contained" size={'small'} onClick={() => {
+                        setSlideNumber(1)
+                    }}>Back</Button>
+                    <div>Select a seat on the image!</div>
+                    <Button variant="contained" size={'small'} disabled>Submit</Button>
+                </TopBarSlide>
+            </StickToTop>
             <div className={classes.sizingContainer}>
-                <div className={classes.scrollContainer}>
-                    <div className={classes.pickerOverallContainer}>
-                        <TransformWrapper
-                            defaultScale={typeof window !== 'undefined' && window.innerWidth < 600 ? 0.37 : 1}
-                            defaultPositionX={0}
-                            defaultPositionY={0}
-                            options={{
-                                minScale: typeof window !== 'undefined' && window.innerWidth < 600 ? 0.37 : 1,
-                                maxScale: 2.5
-                            }}
-                            wheel={{
-                                step: 2
-                            }}
-                            zoomIn={{
-                                step: 15
-                            }}
-                            zoomOut={{
-                                step: 20
-                            }}
-                        >
-                            {/* @ts-ignore */}
-                            {({ zoomIn, zoomOut, resetTransform, ...rest }) => (
-                                <>
-                                    <div style={{
-                                        marginBottom: 10
-                                    }} className={classes.locationHeadings}>
-                                        —— Screen ——
-                                    </div>
-                                    <div className={classes.pickersContainer}>
-                                        <UIContext.Provider value={{
-                                            useCircle,
-                                            highlight,
-                                            scrollToHighlight,
-                                            selected
-                                        }}>
-                                            <FirebaseDatabaseNode path={'/public-seating-arrangement'}
-                                                orderByValue={'i'}>
-                                                {d => {
-                                                    if (d.isLoading || (!d.isLoading && !d.value)) {
-                                                        return <Box
-                                                            className={classes.placeholderSizingContainer}>loading...</Box>
-                                                    }
-                                                    if (!d.value) {
-                                                        return <Box className={classes.placeholderSizingContainer}>something
-                                                            went wrong! it should all work in a sec.</Box>
-                                                    }
-                                                    const seats = Object.keys(d.value).map(_k => d.value[_k]).sort((a, b) => a.i - b.i)
-                                                    return <>
-                                                        <div className={classes.listPicker}>
-                                                            <TransformComponent>
-                                                                <PolygonPoints
-                                                                    specialSpots={SpecialSpots}
-                                                                    seatMasks={SeatMasks}
-                                                                    padding={padding}
-                                                                    onHover={pt => {
-                                                                        // console.debug(pt, pt.taken, pt.i)
-                                                                        if (highlight !== pt.i && !pt.taken) {
-                                                                            setHighlight(pt.i)
-                                                                            setScrollToHighlight(pt.i)
-                                                                        }
-                                                                    }}
-                                                                    onClick={pt => {
-                                                                        if (!pt.taken) {
-                                                                            setSelected(pt.i)
-                                                                        }
-                                                                    }}
-                                                                    bounds={[QuadOutline, SecondQuadOutline]}
-                                                                    seats={seats}
-                                                                />
-                                                            </TransformComponent>
-                                                        </div>
-                                                        <SeatsList
-                                                            svgSize={svgSize}
-                                                            seats={seats}
+                <TransformWrapper
+                    defaultScale={defaultScale}
+                    defaultPositionX={0}
+                    defaultPositionY={0}
+                    options={{
+                        minScale: Math.min(0.5, defaultScale - 0.05),
+                        maxScale: Math.min(1.5, defaultScale - 0.05 + 1)
+                    }}
+                    wheel={{
+                        step: 1
+                    }}
+                    zoomIn={{
+                        step: 15
+                    }}
+                    zoomOut={{
+                        step: 20
+                    }}
+                >
+                    {/* @ts-ignore */}
+                    {({ zoomIn, zoomOut, resetTransform, ...rest }) => (
+                        <>
+                            <div className={classes.locationHeadings}>
+                                —— Screen ——
+                            </div>
+                            <div className={classes.pickersContainer}>
+                                <UIContext.Provider value={{
+                                    useCircle,
+                                    highlight,
+                                    scrollToHighlight,
+                                    selected: selected?.i || -1
+                                }}>
+                                    <FirebaseDatabaseNode path={'/public-seating-arrangement'}
+                                        orderByValue={'i'}>
+                                        {d => {
+                                            if (d.isLoading || (!d.isLoading && !d.value)) {
+                                                return <Box
+                                                    className={classes.placeholderSizingContainer}>loading...</Box>
+                                            }
+                                            if (!d.value) {
+                                                return <Box className={classes.placeholderSizingContainer}>something
+                                                    went wrong! it should all work in a sec.</Box>
+                                            }
+                                            const seats = Object.keys(d.value).map(_k => d.value[_k]).sort((a, b) => a.i - b.i)
+                                            return <>
+                                                <div className={classes.listPicker}>
+                                                    <TransformComponent>
+                                                        <PolygonPoints
+                                                            specialSpots={SpecialSpots}
+                                                            seatMasks={SeatMasks}
                                                             padding={padding}
                                                             onHover={pt => {
+                                                                // console.debug(pt, pt.taken, pt.i)
                                                                 if (highlight !== pt.i && !pt.taken) {
                                                                     setHighlight(pt.i)
+                                                                    setScrollToHighlight(pt.i)
                                                                 }
                                                             }}
                                                             onClick={pt => {
                                                                 if (!pt.taken) {
-                                                                    setSelected(pt.i)
+                                                                    setSelected(pt)
                                                                 }
                                                             }}
+                                                            bounds={[QuadOutline, SecondQuadOutline]}
+                                                            seats={seats}
                                                         />
-                                                    </>
-                                                }}
-                                            </FirebaseDatabaseNode>
-                                        </UIContext.Provider>
-                                    </div>
-                                    <div style={{
-                                        marginTop: 10
-                                    }} className={classes.locationHeadings}>
-                                        —— Office ——
-                                    </div>
-                                    <div className={classes.tools}>
-                                        <div>
-                                            <Button variant="contained" color="default"
-                                                onClick={() => setUseCircle(prev => prev > 0 ? 0 : 3)}>
-                                                Toggle safety radius (3ft)
-                                            </Button>
-                                        </div>
-                                        <div>
-                                            <Button variant="contained" color="default"
-                                                onClick={zoomOut}>
-                                                <ZoomOutIcon/>
-                                            </Button>
-                                            <Button variant="contained" color="default"
-                                                onClick={zoomIn}>
-                                                <ZoomInIcon/>
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-                        </TransformWrapper>
-                    </div>
-                </div>
+                                                    </TransformComponent>
+                                                </div>
+                                                <SeatsList
+                                                    svgSize={svgSize}
+                                                    seats={seats}
+                                                    padding={padding}
+                                                    onHover={pt => {
+                                                        if (highlight !== pt.i && !pt.taken) {
+                                                            setHighlight(pt.i)
+                                                        }
+                                                    }}
+                                                    onClick={pt => {
+                                                        if (!pt.taken) {
+                                                            setSelected(pt)
+                                                        }
+                                                    }}
+                                                />
+                                            </>
+                                        }}
+                                    </FirebaseDatabaseNode>
+                                </UIContext.Provider>
+                            </div>
+                            <div className={classes.locationHeadings}>
+                                —— Gym ——
+                            </div>
+                            <div className={classes.tools}>
+                                <div>
+                                    <Button variant="contained" color="default"
+                                        onClick={() => setUseCircle(prev => prev > 0 ? 0 : 3)}>
+                                        Toggle safety radius (3ft)
+                                    </Button>
+                                </div>
+                                <div>
+                                    <Button variant="contained" color="default"
+                                        onClick={zoomOut}>
+                                        <ZoomOutIcon/>
+                                    </Button>
+                                    <Button variant="contained" color="default"
+                                        onClick={zoomIn}>
+                                        <ZoomInIcon/>
+                                    </Button>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </TransformWrapper>
             </div>
         </Layout>
     )
