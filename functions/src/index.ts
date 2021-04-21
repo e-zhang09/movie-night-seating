@@ -161,14 +161,10 @@ const auth = admin.auth()
 // })
 
 exports.submitSeatChoice = functions.https.onRequest((req, res) => {
-
-    console.debug('huh???????????????????????????????????????????????????????')
-
     const whitelist = ["http://localhost:3001", "https://movie-seating.lynbrookasb.com"]
     const corsOptions = {
         origin: function (origin: string, callback: (arg0: any) => void) {
-            console.debug('whiteList', whitelist)
-            console.debug('checking against origin', origin)
+            // console.debug('info: checking against origin', origin)
             if (whitelist.indexOf(origin) !== -1) {
                 // @ts-ignore
                 callback(null, true)
@@ -183,8 +179,11 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
 
     async function submissionHandler () {
         const { idToken, selected } = req.body
+
+        console.debug(`info: attempting to select seat # ${selected}`)
+
         if (!idToken) {
-            console.debug('no id token')
+            console.debug('error: no id token')
             res.json({
                 status: "errored",
                 reason: "supply_id_token"
@@ -192,7 +191,7 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
             return
         }
         if (typeof selected !== "number") {
-            console.debug('no selected seat')
+            console.debug('error: no selected seat')
             res.json({
                 status: "errored",
                 reason: "supply_selection"
@@ -201,7 +200,7 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
         }
         const user = await auth.verifyIdToken(idToken || "")
         if (!user) {
-            console.debug('no user', user, idToken.substr(0, 10))
+            console.debug('error: no user', user, idToken.substr(0, 10))
             res.json({
                 status: "errored",
                 reason: "bad_id_token"
@@ -211,7 +210,7 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
         const { name, email, uid, picture } = user
 
         if (!name || !email || !uid) {
-            console.debug('no user (email or uid or name)', name, email, uid, picture?.substr(0, 5))
+            console.debug('error: no user (email or uid or name)', name, email, uid, picture?.substr(0, 5))
             res.json({
                 status: "errored",
                 reason: "bad_id_token"
@@ -220,7 +219,7 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
         }
 
         if (!email.includes('@student.fuhsd.org')) {
-            console.debug('email bad', name, email, uid, picture?.substr(0, 5))
+            console.debug('error: email bad', name, email, uid, picture?.substr(0, 5))
             res.json({
                 status: "errored",
                 reason: "bad_email"
@@ -231,15 +230,13 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
         const snapshot = await privateRef.child(uid).once("value")
         const value = snapshot.val()
         if (value) {
-            console.debug('already registered')
+            console.debug('error: already registered')
             res.json({
                 status: "errored",
                 reason: "already_registered"
             })
             return
         }
-
-        console.debug(picture)
 
         const seatRef = publicRef.orderByChild("i").equalTo(selected)
         const seatSnapshot = await seatRef.once("value")
@@ -249,6 +246,7 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
         const seat = _seat[key]
 
         if (!seat) {
+            console.debug('error: no seat in public')
             res.json({
                 status: "errored",
                 reason: "seat_already_taken"
@@ -257,6 +255,7 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
         }
 
         if (seat?.taken) {
+            console.debug('error: seat already taken in public')
             res.json({
                 status: "errored",
                 reason: "seat_already_taken"
@@ -269,10 +268,12 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
         await publicRef.child(key).update({
             taken: true
         }).catch(_err => {
+            console.debug('error: seat already taken in public (rules validation)')
             _errored = 'seat_already_taken'
         })
 
         if (_errored) {
+            console.debug('error: failed to update public ref')
             res.json({
                 status: "errored",
                 reason: _errored
@@ -280,7 +281,7 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
             return
         }
 
-        console.debug('pass update')
+        console.debug('info: pass all updates')
 
         await privateRef.child(uid).set({
             name,
@@ -289,6 +290,8 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
             submitTime: new Date().getTime(),
             selected
         })
+
+        console.debug(`info: success choosing seat #${selected} for ${name}`)
 
         res.json({ status: "successful", seatVal: seatSnapshot.val() })
     }
