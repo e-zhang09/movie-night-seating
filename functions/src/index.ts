@@ -218,6 +218,8 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
             return
         }
 
+        console.debug(`info: found that user is ${name} with the email: ${email}`)
+
         if (!email.includes('@student.fuhsd.org')) {
             console.debug('error: email bad', name, email, uid, picture?.substr(0, 5))
             res.json({
