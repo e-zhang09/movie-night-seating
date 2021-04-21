@@ -3,7 +3,7 @@ import Document, { Html, Head, Main, NextScript } from 'next/document'
 import { ServerStyleSheets } from '@material-ui/core/styles'
 
 export default class MyDocument extends Document {
-    render() {
+    render () {
 
         return (
             <Html lang='en'>
@@ -13,14 +13,25 @@ export default class MyDocument extends Document {
                         href='https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;800;900&display=swap'
                         rel='stylesheet'
                     />
+                    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z1VKG7PQHN"/>
+                    <script
+                        dangerouslySetInnerHTML={{
+                            __html: `
+                                window.dataLayer = window.dataLayer || [];
+                                function gtag(){dataLayer.push(arguments);}
+                                gtag('js', new Date());
+                                gtag('config', 'G-Z1VKG7PQHN');
+                            `
+                        }}
+                    />
                 </Head>
                 <body style={{
                     margin: 0,
                     padding: 0,
                     fontFamily: '"Poppins", sans-serif'
                 }}>
-                    <Main />
-                    <NextScript />
+                <Main/>
+                <NextScript/>
                 </body>
             </Html>
         )
