@@ -387,7 +387,7 @@ const SelectionPage = ({
             errored = true
         })
 
-        await sleep(Math.random() * 2500 + 2500) // lol
+        await sleep(Math.random() * 1000 + 1000) // lol
 
         if (result?.status !== 'successful' || errored) {
             console.debug('result', result)
@@ -398,6 +398,8 @@ const SelectionPage = ({
                 toast.warn('Our records show that you\'ve already registered for this event but we will only allow one submission per student!')
             } else if (result?.reason === 'supply_id_token' || result?.reason === 'bad_id_token') {
                 toast.error('Oops! Something went wrong with verifying your email address. Please refresh this page to try again!')
+            } else if (result?.reason === 'bad_email') {
+                toast.error('Hi, pls use student.fuhsd.org, thanks.')
             } else {
                 toast.error(`Error: ${result?.reason}, please try again later!`)
             }

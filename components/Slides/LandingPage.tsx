@@ -2,16 +2,16 @@ import { makeStyles } from '@material-ui/core/styles'
 import Layout from '../Layout'
 import firebase from 'firebase/app'
 import 'firebase/database'
-import { ReactNode, useContext, useEffect, useState } from 'react'
+import { ReactNode, useCallback, useContext, useEffect, useState } from 'react'
 import { CONTACT_EMAIL, FIREBASE_CONFIG } from '../../utils/constants'
 import { Box, Button, Typography, Fade, Checkbox, Tooltip } from '@material-ui/core'
 import { AppContext, User } from '../../pages'
-import { useRouter } from 'next/router'
 import StickToTop from '../StickToTop'
 import TopBarSlide from '../TopBarSlide'
 import { toast } from 'react-toastify'
 import SubdirectoryArrowRightIcon from '@material-ui/icons/SubdirectoryArrowRight'
 import Link from '@material-ui/core/Link'
+import dynamic from 'next/dynamic'
 
 interface Props {
     setSlideNumber: (slide: number) => void,
@@ -38,7 +38,7 @@ const useStyles = makeStyles(theme => ({
     gridRows: {
         rowGap: 8,
         [theme.breakpoints.up('md')]: {
-            rowGap: 40
+            rowGap: 32
         }
     },
     detailsGrid: {
@@ -60,6 +60,8 @@ const useStyles = makeStyles(theme => ({
     }
 }))
 
+const DynamicSignUpsModal = dynamic(() => import('../SignUpsModal'))
+
 const ListItem = ({ children }: { children: ReactNode }) => {
     return <span style={{ display: 'flex' }}>
         <SubdirectoryArrowRightIcon style={{ marginTop: 2 }}/>
@@ -71,8 +73,18 @@ const ListItem = ({ children }: { children: ReactNode }) => {
 
 const LandingPage = ({ setSlideNumber, setUser, setLandingSlide }: Props) => {
     const classes = useStyles()
-    const { user, landingSlide } = useContext(AppContext)
-    const router = useRouter()
+    const { user, landingSlide, isPrivileged } = useContext(AppContext)
+
+    const [openPrivilegedModal, _setOpenPrivilegedModal] = useState(false)
+
+    const setOpenPrivilegedModal = useCallback((open: boolean) => {
+        if (isPrivileged && open) {
+            _setOpenPrivilegedModal(open)
+        }
+        if (!open) {
+            _setOpenPrivilegedModal(Boolean(open))
+        }
+    }, [isPrivileged])
 
     function onAuthStateChange (callback: (user: null | User) => void) {
         return firebase.auth().onAuthStateChanged(async _user => {
@@ -215,7 +227,7 @@ const LandingPage = ({ setSlideNumber, setUser, setLandingSlide }: Props) => {
                 }}>👉 Continue</Button>
             </TopBarSlide>
         </StickToTop>
-        <Box mt={4} px={'5vw'} display={'grid'} gridTemplateRows={'auto'} justifyContent={'center'}
+        <Box mt={3} px={'5vw'} display={'grid'} gridTemplateRows={'auto'} justifyContent={'center'}
             alignItems={'center'} className={classes.gridRows}>
             <Fade in={true} timeout={1000}>
                 <Box className={classes.rowOrientate}>
@@ -255,7 +267,7 @@ const LandingPage = ({ setSlideNumber, setUser, setLandingSlide }: Props) => {
                     Checking-In will start at 7:00 PM at the Office drive through.
                 </ListItem>
                 <ListItem>
-                    The movie, Disney/Pixar's Soul, will starts at <b>7:45 PM</b>. Can't wait to see you all there!!
+                    The movie, Disney/Pixar's Soul, will start at <b>7:45 PM</b>. Can't wait to see you all there!!
                 </ListItem>
                 <ListItem>
                     Please log-in and do all registrations with your <b>@student.fuhsd.org</b> email account!
@@ -285,11 +297,13 @@ const LandingPage = ({ setSlideNumber, setUser, setLandingSlide }: Props) => {
             </Box>
             <Box mb={10} display={'flex'} alignItems={'center'}>
                 <Typography variant={'h4'}>I've read everything</Typography>
-                <Tooltip title={user ? 'You sure?' : 'Please log in first!'} placement="top">
+                <Tooltip
+                    title={user ? (user.email?.includes('@student.fuhsd.org') ? 'You sure?' : 'Please use an @student.fuhsd.org email!') : 'Please log in first!'}
+                    placement="top">
                     <div>
                         <Checkbox
                             checked={landingSlide === 2}
-                            disabled={!Boolean(user)}
+                            disabled={!Boolean(user) || !user?.email?.includes('@student.fuhsd.org')}
                             onChange={() => {
                                 setLandingSlide(2)
                             }}
@@ -303,9 +317,19 @@ const LandingPage = ({ setSlideNumber, setUser, setLandingSlide }: Props) => {
             <Box mb={20}>
                 {user && <Button onClick={() => {
                     logout()
-                }} size={'small'}>
+                }} size={'small'} variant={'contained'}>
                     Logout 🏃
                 </Button>}
+                {isPrivileged &&
+                <>
+                    <Button style={{
+                        marginLeft: 20
+                    }} onClick={() => {
+                        setOpenPrivilegedModal(true)
+                    }} variant={'contained'} size={'small'}>Open Signup List 📒</Button>
+                    <DynamicSignUpsModal setOpen={(bool) => setOpenPrivilegedModal(bool)} open={openPrivilegedModal}/>
+                </>
+                }
             </Box>
         </Box>
     </Layout>

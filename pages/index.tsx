@@ -6,6 +6,7 @@ import { Seat } from '../components/PolygonPoints'
 import firebase from 'firebase/app'
 import 'firebase/auth'
 import 'firebase/database'
+import { CONTACT_EMAIL } from '../utils/constants'
 
 const DynamicSelectionPage = dynamic(() => import('../components/Slides/SelectionPage'), {
     loading: ({ error, isLoading, pastDelay }) => <div style={{
@@ -36,7 +37,8 @@ export const AppContext = createContext({
     user: null as null | User,
     selected: null as null | Seat,
     submittedSeat: null as null | Seat | false,
-    landingSlide: 0 as number // 0..2
+    landingSlide: 0 as number, // 0..2
+    isPrivileged: false
 })
 
 const index = () => {
@@ -47,7 +49,7 @@ const index = () => {
     const [selected, setSelected] = useState<null | Seat>(null)
     const [submittedSeat, setSubmittedSeat] = useState<null | Seat | false>(null)
     const [landingSlide, setLandingSlide] = useState(0)
-
+    const [isPrivileged, setIsPrivileged] = useState<boolean>(false)
 
     useEffect(() => {
         // @ts-ignore
@@ -58,16 +60,25 @@ const index = () => {
         if (user && typeof user.uid === 'string') {
             ;(async function () {
                 const db = firebase.database()
+
+                if (user?.email.includes(CONTACT_EMAIL) || process.env.NODE_ENV === 'development') {
+                    const _priv = await db.ref('private-seating-choices/000privilegeCheck000').once('value')
+                    const isPrivileged = _priv.val() === '__hi__'
+                    if(isPrivileged) {
+                        setIsPrivileged(true)
+                    }
+                }
+
                 const _doc = await db.ref(`private-seating-choices/${user.uid}`).once('value')
                 const doc = _doc.val()
                 console.debug(doc)
-                if(doc){
+                if (doc) {
                     setSubmittedSeat({
                         x: -1,
                         y: -1,
                         i: doc.selected || null
                     })
-                }else{
+                } else {
                     setSubmittedSeat(false)
                 }
             })()
@@ -79,7 +90,8 @@ const index = () => {
         user,
         selected,
         submittedSeat,
-        landingSlide
+        landingSlide,
+        isPrivileged
     }}>
         {slideNumber === 1
         && <span>
@@ -96,7 +108,8 @@ const index = () => {
             display: 'flex',
             flexDirection: 'column'
         }}>
-                <DynamicSelectionPage setSlideNumber={setSlideNumber} setSelected={setSelected} setSubmittedSeat={setSubmittedSeat}/>
+                <DynamicSelectionPage setSlideNumber={setSlideNumber} setSelected={setSelected}
+                    setSubmittedSeat={setSubmittedSeat}/>
             </span>
         }
     </AppContext.Provider>

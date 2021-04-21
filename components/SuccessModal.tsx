@@ -53,8 +53,10 @@ const SuccessModal = ({ open, setOpen, seat, submitting }: Props) => {
                         </>
                         : <>
                             <h2 id="transition-modal-title">Success!</h2>
-                            <p id="transition-modal-description">Your seat choice{(seat && typeof seat?.i === 'number') ? `(#${seat.i})` : ''} has been recorded. You should expect a confirmation email soon!</p>
-                            <p>TODO: [Seat map image here]</p>
+                            <p id="transition-modal-description">Your seat
+                                choice{(seat && typeof seat?.i === 'number') ? `(#${seat.i})` : ''} has been
+                                recorded.</p>
+                            <p>You may now close this tab and complete the Google Form :)</p>
                         </>
                     }
                 </div>

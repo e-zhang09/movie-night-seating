@@ -209,11 +209,21 @@ exports.submitSeatChoice = functions.https.onRequest((req, res) => {
             return
         }
         const { name, email, uid, picture } = user
+
         if (!name || !email || !uid) {
             console.debug('no user (email or uid or name)', name, email, uid, picture?.substr(0, 5))
             res.json({
                 status: "errored",
                 reason: "bad_id_token"
+            })
+            return
+        }
+
+        if (!email.includes('@student.fuhsd.org')) {
+            console.debug('email bad', name, email, uid, picture?.substr(0, 5))
+            res.json({
+                status: "errored",
+                reason: "bad_email"
             })
             return
         }

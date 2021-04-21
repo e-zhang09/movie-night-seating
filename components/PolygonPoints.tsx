@@ -194,7 +194,8 @@ const PolygonPoints = ({
                             x={seat.x + padding.left}
                             y={seat.y + 1 + padding.top}
                         >{seat.i}</text>
-                        {seat.taken && !submittedSeat &&
+                        {/* @ts-ignore don't need to worry about submittedSeat?.i */}
+                        {seat.taken && submittedSeat?.i !== seat.i &&
                         <line x1={seat.x - 10 + padding.left} x2={seat.x + 10 + padding.left} y1={seat.y + padding.top}
                             y2={seat.y + padding.top}/>}
                     </g>
