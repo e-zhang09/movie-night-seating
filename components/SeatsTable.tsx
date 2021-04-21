@@ -206,6 +206,8 @@ const SeatsTable = ({ signups }: SeatsTable) => {
         publicSeats.forEach(_doc => {
             if (seatNums.includes(_doc.i)) {
                 pubUpdates[`/public-seating-arrangement/${_doc.docKey}`] = {
+                    ..._doc,
+                    docKey: null,
                     taken: null
                 }
             }
