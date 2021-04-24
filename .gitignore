@@ -99,3 +99,6 @@ node_modules/
 
 # dotenv environment variables file
 .env
+
+# replacement definitions for the BFG git cleaner
+bfg-replacements.txt

@@ -4,17 +4,17 @@
     ".write": false,
     "public-seating-arrangement": {
       ".read": true,
-      ".write": "auth.token.email === 'asbsocial1@gmail.com' || auth.token.email === ''",
+      ".write": "auth.token.email === 'asbsocial1@gmail.com' || auth.uid==='scB0B4Odl7YSJjwSX0G51Y7Nri22'",
       ".indexOn": "i",
       "$random_id": {
         ".write": "auth.uid === 'fb-functions' && !(data.child('taken').val() == true)"
       }
     },
     "private-seating-choices": {
-      ".read": "auth.token.email === 'asbsocial1@gmail.com' || auth.token.email === ''",
+      ".read": "auth.token.email === 'asbsocial1@gmail.com' || auth.uid==='scB0B4Odl7YSJjwSX0G51Y7Nri22'",
       "$uid": {
         ".read": "auth.uid === 'fb-functions' || auth.uid === $uid",
-        ".write": "$uid !== '000privilegeCheck000' && (auth.uid === 'fb-functions' || auth.token.email === 'asbsocial1@gmail.com' || auth.token.email === '')"
+        ".write": "$uid !== '000privilegeCheck000' && (auth.uid === 'fb-functions' || auth.token.email === 'asbsocial1@gmail.com' || auth.uid==='scB0B4Odl7YSJjwSX0G51Y7Nri22')"
       }
     }
   }
